@@ -1,0 +1,19 @@
+{
+    "date": "2026-01-19T18:24:38.211615",
+    "symbols": [
+        "GBPUSDm",
+        "EURUSDm",
+        "XAUUSDm"
+    ],
+    "capital_initial": 10000.0,
+    "capital_final": 10000.0,
+    "total_pnl": 0,
+    "roi": 0.0,
+    "total_trades": 0,
+    "win_rate": 0,
+    "profit_factor": 0,
+    "max_drawdown": 0,
+    "sharpe_ratio": 0,
+    "score": 1,
+    "trades": []
+}

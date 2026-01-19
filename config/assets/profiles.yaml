@@ -1,0 +1,96 @@
+# --- ASSET PROFILES CONFIGURATION ---
+# Définition des profils de risque et de stratégie par classe d'actifs.
+# Ce fichier permet d'adapter la logique SMC à la volatilité spécifique de chaque marché.
+
+# 1. FOREX MAJORS (EURUSD, GBPUSD, etc.)
+# Caractéristiques: Haute liquidité, spread serré, respecte bien la structure
+forex_major:
+  smc:
+    liquidity:
+      sweep_lookback: 20
+      min_wick_ratio: 0.3     # Mèches standard suffisantes
+    fvg:
+      min_size_pips: 2.0      # Gaps petits significatifs
+      mitigation_threshold: 0.5
+    structure:
+      swing_length: 5
+  risk:
+    max_spread_pips: 2.5      # Spread serré exigé
+    min_sl_pips: 10.0         # Stop serré possible
+    risk_per_trade: 1.0       # Risque standard
+    allow_counter_trend: false # ⛔ SÉCURITÉ: Refuse les trades contre la tendance de fond
+
+# 2. COMMODITIES (XAUUSD, XAGUSD, WTI)
+# Caractéristiques: Haute volatilité, mèche de chasse fréquentes, spreads plus larges
+commodity:
+  smc:
+    liquidity:
+      sweep_lookback: 30      # Regarder plus loin
+      min_wick_ratio: 0.4     # Exiger des mèches plus claires (rejet fort)
+    fvg:
+      min_size_pips: 10.0     # Ignorer le bruit (petits gaps)
+      mitigation_threshold: 0.6
+    structure:
+      swing_length: 8         # Filtrer le bruit mineur
+  risk:
+    max_spread_pips: 40.0     # XAU spread en points (ex: 30-40 cents)
+    min_sl_pips: 50.0         # Stop large obligatoire sur Gold
+    risk_per_trade: 0.5       # Risque réduit car volatilité extrême
+    allow_counter_trend: true # Autorisé pour les mèches de chasse (V-Reversals)
+
+# 3. CRYPTO (BTCUSD, ETHUSD) [OPTIMISÉ ICT PRO 2026]
+# Caractéristiques: Volatilité, Inducement, Fake Moves, Displacement requis
+crypto:
+  strategies:
+    asian_range_sweep: false # Inutile sur crypto 24/7 (Bruit)
+    silver_bullet: true      # Tres efficace
+  smc:
+    min_confidence_score: 80 # Seuil strict
+    liquidity:
+      sweep_lookback_ltf: 15  # M15/M5 sweeps
+      sweep_lookback_htf: 40  # H1/H4 sweeps
+      min_wick_ratio: 0.2     # Crypto = mèches sales acceptées
+      inducement: true        # Chercher Inducement avant entry
+    structure:
+      swing_length: 5
+      enforce_htf_bias: true  # 🔒 OBLIGATOIRE: Suivre D1/H4
+      fixed_htf_bias: "BULLISH" # 🚀 FORCE LE BULL RUN (Ignore structure bearish locale D1)
+      htf: ["D1", "H4"]
+    displacement:
+      min_body_ratio: 0.6     # Validité mvmts impulsifs
+      min_range_percent: 0.4  # Force du mouvement
+    fvg:
+      min_size_pips: 30.0
+      mitigation_threshold: 0.5
+      fill_ratio_min: 0.5     # Crypto aime le 50%
+      fill_ratio_max: 1.0
+    entry:
+      use_breakers_only: true # ⚡ BREAKER > OB en Crypto
+      ltf_entry: ["M5", "M1"] # Entrée chirurgicale
+    session_filter:
+      enabled: true
+      allowed_sessions: ["preNY", "NY"] # Focus liquidité US
+    targets:
+      priority: ["liquidity", "eqh_eql", "fvg"]
+  risk:
+    min_sl_pips: 3000.0       # Stop large pour respiration (~$30)
+    max_spread_pips: 3000.0   # Tolérance spread
+    risk_per_trade: 0.5       # Risque prudent
+    allow_counter_trend: false # ⛔ SUICIDE INTERDIT (Short Bull Run)
+    
+# 4. INDICES (US30, NAS100, SPX500)
+# Caractéristiques: Tendance forte, mouvements rapides session NY
+indices:
+  smc:
+    liquidity:
+      sweep_lookback: 15
+      min_wick_ratio: 0.3
+    fvg:
+      min_size_pips: 10.0
+    structure:
+      swing_length: 5
+  risk:
+    max_spread_pips: 5.0
+    min_sl_pips: 20.0
+    risk_per_trade: 0.75
+    allow_counter_trend: false # Indices = Tendance forte, Mieux vaut suivre

@@ -1,0 +1,5 @@
+
+# Ignore large files
+logs/*.log
+data/*.csv
+data/*.pkl

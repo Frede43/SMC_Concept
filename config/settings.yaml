@@ -1,0 +1,313 @@
+# --- General Settings ---
+general:
+  bot_name: "Ultimate SMC Bot"
+  version: "3.2"
+  mode: "live"  # demo, live
+  log_level: "DEBUG"
+
+# --- Dashboard Web ---
+dashboard:
+  enabled: true
+  port: 5000
+  host: "0.0.0.0"
+
+# --- Correlation Guard ---
+correlation_guard:
+  enabled: true
+  max_exposure_per_currency: 0.25  # Lots max par devise (Conseil Expert: 0.25)
+  max_positions_per_group: 2        # Positions max dans un groupe corrélé
+
+# --- Weekend Filter ---
+weekend_filter:
+  enabled: true
+  friday_stop_new_trades_hour: 21  # Arrêt des nouveaux trades
+  friday_close_positions: true      # Activer la fermeture AUTO (Forex uniquement)
+  friday_close_positions_hour: 22   # Fermeture de sécurité
+  monday_start_hour: 1              # Reprise lundi matin
+  timezone_offset: 2                # GMT+2 (Exness)
+
+# --- MT5 Connection ---
+mt5:
+  login: 297641028  # Exness Real/Demo
+  server: "Exness-MT5Trial9"
+  path: "C:\\Program Files\\MetaTrader 5\\terminal64.exe"
+  timeout: 60000
+
+# --- Trading Universe ---
+# ✅ CONFIGURATION ÉQUILIBRÉE - 3 Symboles Forex Majeurs
+symbols:
+  - name: "EURUSDm"
+    trade_weekend: false
+    is_crypto: false
+    risk_settings:
+      allow_counter_trend: false
+      block_mtf_conflict: true
+      mtf_conflict_symbols: ["EURUSD", "GBPUSD"]
+      
+  - name: "GBPUSDm"
+    trade_weekend: false
+    is_crypto: false
+    risk_settings:
+      allow_counter_trend: false
+      block_mtf_conflict: true
+      mtf_conflict_symbols: ["EURUSD", "GBPUSD"]
+  
+  - name: "USDJPYm"    # ✅ RÉACTIVÉ
+    trade_weekend: false
+    is_crypto: false
+    risk_settings:
+      allow_counter_trend: false
+      block_mtf_conflict: true
+  
+  # ❌ DÉSACTIVÉ pour compte 300$ (spread trop élevé relatif au capital)
+  # Réactiver quand capital > 1000$
+  # - name: "BTCUSDm"
+  #   trade_weekend: true
+  #   is_crypto: true
+  #   max_spread: 3500
+  #   risk_settings:
+  #     sl_multiplier: 1.5
+  #     use_atr_sl: true
+  #     max_slippage_pips: 3000
+
+  # - name: "XAUUSDm"
+  #   trade_weekend: false
+  #   is_crypto: false
+  #   risk_settings:
+  #     max_slippage_pips: 30
+  
+  # - name: "US30m"
+  #   trade_weekend: false
+  #   is_crypto: false
+  #   strategies:
+  #     silver_bullet: true
+  #     amd: true
+  #     smt: true
+  #   risk_settings:
+  #     allow_counter_trend: false
+  #     max_slippage_pips: 20
+  #     max_spread: 100
+  
+  # - name: "USTECm"
+  #   trade_weekend: false
+  #   is_crypto: false
+  #   strategies:
+  #     silver_bullet: true
+  #     amd: true
+  #     smt: true
+  #   risk_settings:
+  #     allow_counter_trend: false
+  #     max_slippage_pips: 20
+  #     max_spread: 300
+
+timeframes:
+  ltf: "H1"   # RETOUR H1 (Plus stable)
+  htf: "D1"   # D1 (Trend fort)
+  
+# --- Risk Management ---
+# ⚠️ OPTIMISÉ POUR COMPTE 300$ - ULTRA CONSERVATEUR ⚠️
+risk:
+  risk_per_trade: 0.20      # 🛡️ RÉDUIT à 0.20% = 0.60$ par trade (au lieu de 0.75$)
+  max_daily_loss: 0.60      # 🛡️ RÉDUIT à 0.60% = max 2$ perte/jour (3 trades perdants max)
+  max_open_trades: 2        # 🛡️ RÉDUIT à 2 (au lieu de 3) pour petit capital
+  max_spread_pips: 2.0      # 🛡️ STRICT 2 pips max (était 5.0) pour éviter trades coûteux
+  
+  # 🛡️ SECURITÉ ANTI-DOUBLON (STACKING)
+  min_stacking_distance_pips: 15.0 # ✅ Augmenté à 15 pips (était 5)
+  min_stacking_time_seconds: 300   # ✅ Augmenté à 5 min (était 2 min)
+  
+  risk_reward:
+    min: 2.5                # ✅ AUGMENTÉ à 2.5:1 (était 2.0) pour compenser spreads
+    target: 4.0             # ✅ AUGMENTÉ à 4:1 (était 3.0) pour meilleure rentabilité
+    
+  management:
+    break_even: true        
+    break_even_trigger: 0.7 # 🛡️ STRICT (10-12 pips) - Sécuriser TRÈS vite en M15
+    break_even_offset: 2    
+    partial_close: false    # ❌ DÉSACTIVÉ pour petit compte (lot 0.01 trop petit pour split)
+    partial_close_trigger: 2.0
+    partial_close_pct: 0.5
+    trailing_stop: true     
+    trailing_trigger: 2.5   # ✅ AUGMENTÉ à 2.5R (était 2.0R) - Trail après bon profit
+    trailing_dist: 1.0      # Trail large pour laisser respirer
+    
+  anti_tilt:
+    enabled: true
+    max_losing_streak: 2    # ✅ RÉDUIT à 2 (était 3) - Plus strict sur petit compte
+
+# --- SMC Strategy Parameters ---
+# ✅ ÉQUILIBRÉ - Qualité + Quantité
+smc:
+  min_confidence: 0.70    # ⚖️ ASSOUPLIR à 0.70 (était 0.75) - Standard industrie
+  trend_filter: "strict"  # ✅ Garder strict - Trade avec tendance seulement
+  
+  # 🆕 TREND STRENGTH FILTER (ADX)
+  trend_strength:
+    enabled: true
+    min_adx: 20.0         # ⚖️ RÉDUIT à 20 (était 25) - Accepter tendances modérées
+    adx_period: 14
+    strict_mode: false     # ⚖️ DÉSACTIVER strict (était true) - Mode recommandation
+  
+  structure:
+    swing_length: 5
+    bos_confirmation: "body"
+    choch_confirmation: "wick"
+    require_htf_alignment: false  # ⚖️ DÉSACTIVER (était true) - Trop restrictif
+    
+  order_blocks:
+    mitigation_type: "wick"
+    max_age_candles: 50
+    require_retest: false      # Pas de retest obligatoire
+    min_strength: 0.60         # ⚖️ RÉDUIT à 0.60 (était 0.70)
+    
+  fvg:
+    min_size_pips: 3.0      # ⚖️ RÉDUIT à 3.0 (était 5.0) - Accepter FVG moyens
+    mitigation_threshold: 0.5
+    require_structure_confluence: false  # ⚖️ DÉSACTIVER (était true)
+    
+  liquidity:
+    sweep_lookback: 10
+    min_wick_ratio: 0.2
+    require_confirmation: false  # ⚖️ DÉSACTIVER (était true) - Trop strict
+    min_sweep_strength: 0.60    # ⚖️ RÉDUIT à 0.60 (était 0.70)
+    
+  # Killzones (Sessions Actives) - ASSOUPLIR
+  killzones:
+    strict_mode: false  # ⚖️ DÉSACTIVER strict - Autoriser hors killzones
+    timezone_offset: 2  # GMT+2
+    
+    asian:
+      enabled: false    # ❌ DÉSACTIVÉ - Trop de faux signaux
+      start: "00:00"
+      end: "08:00"
+      
+    london:
+      enabled: true     # ✅ ACTIVÉ - Session haute probabilité
+      start: "08:00"
+      end: "11:00"      # Raccourci (fin chevauchement NY)
+      min_volume_percentile: 60  # 🆕 Volume minimum requis
+      
+    new_york:
+      enabled: true     # ✅ ACTIVÉ - Session principale
+      start: "13:00"
+      end: "16:00"
+      min_volume_percentile: 60  # 🆕 Volume minimum requis
+      
+    # Silver Bullet (haute probabilité)
+    silver_bullet:
+      enabled: true
+      strict: true
+      am_start: "09:00"
+      am_end: "10:00"
+      pm_start: "14:00"
+      pm_end: "15:00"
+      
+  strategies:
+    - "pdh_pdl_sweep"     
+    - "asian_range_sweep" 
+
+  smt:
+    enabled: true
+    pairs:
+      US30m:
+        corr_symbol: "USTECm"
+        type: "positive"  # Si US30 monte, USTEC doit monter. Si divergence = Signal
+      USTECm:
+        corr_symbol: "US30m"
+        type: "positive"
+      EURUSDm:
+        corr_symbol: "GBPUSDm"
+        type: "positive"  # DXY correlation inverse (classique)
+      GBPUSDm:
+        corr_symbol: "EURUSDm"
+        type: "positive"
+
+# --- Filters ---
+filters:
+  ma_trend:
+    enabled: true
+    period: 200
+    timeframe: "D1"
+    
+  rsi:
+    enabled: true
+    period: 14
+    overbought: 70
+    oversold: 30
+    
+  news:
+    enabled: true
+    mode: "real"  # 🆕 CHANGÉ: real au lieu de simulated (multi-source: ForexFactory + TradingView + MyFxBook)
+    minutes_before: 45  # ✅ 45min avant
+    minutes_after: 45   # ✅ 45min après
+    filter_high_impact: true
+    filter_medium_impact: true  # ✅ Bloquer aussi MEDIUM impact
+    
+    # 🆕 OPTIMISÉ: Fenêtre élargie pour certains MEDIUM events critiques
+    medium_impact_window:
+      minutes_before: 120  # 2h avant (au lieu de 45min)
+      minutes_after: 60    # 1h après
+    
+    # 🆕 NOUVEAU: Liste events MEDIUM à traiter comme HIGH impact
+    critical_medium_events:
+      - "Retail Sales"
+      - "Core PPI"
+      - "Building Permits"
+      - "Housing Starts"
+      - "Fed Chair Powell Speaks"
+      - "FOMC Member Williams Speaks"
+      - "ISM Manufacturing PMI"
+      - "Michigan Consumer Sentiment"
+    
+    # 🆕 NOUVEAU: Alertes proactives
+    proactive_alerts:
+      enabled: true
+      alert_hours_before: 4  # Notification Discord/Telegram 4h avant news critique
+      alert_high_only: true   # Seulement pour HIGH impact
+    
+  advanced:
+    min_volume_percentile: 50 # Volume relatif requis
+    atr_threshold: 1.0       # Volatilité minimale
+
+# --- Fundamental Analysis (NOUVEAU) ---
+fundamental:
+  enabled: true  # Master switch (mettre false pour désactiver complètement)
+  
+  # Poids des composants dans le score final (total doit faire ~1.0)
+  weights:
+    news: 0.25         # 25% - Impact des news à venir
+    cot: 0.25          # 📉 25% - COT (Donnée retardée de 3 jours)
+    intermarket: 0.50  # 📈 50% - Intermarket Temps Réel (DXY/VIX est roi)
+  
+  # Seuils de décision
+  # Seuils de décision (DURCIS)
+  block_threshold: -30    # Score < -30 → Bloquer trade (divergence macro significative)
+  reduce_threshold: -15   # Score < -15 → Réduire position (doute macro)
+  boost_threshold: 40     # Score > 40 → Booster position (confluence forte)
+  
+  # Filtre News
+  news_filter:
+    enabled: true
+    block_before_minutes: 30  # Bloquer X min avant news HIGH impact
+    block_after_minutes: 30   # Bloquer X min après
+    high_impact_only: false   # false = inclure MEDIUM aussi
+    # Note: Nécessite 'pip install investpy'
+  
+  # Analyse COT (Commitments of Traders)
+  cot_analysis:
+    enabled: true  # Activé (Source: CFTC.gov)
+    extreme_threshold: 2.0  # Écarts-types pour considérer "extrême"
+    update_frequency: "weekly"  # COT publié le vendredi
+    # Note: Nécessite implémentation source données (voir core/cot_analyzer.py)
+  
+  # Intermarket Analysis
+  intermarket:
+    enabled: true
+    risk_off_vix_threshold: 20  # VIX > 20 = Risk-off
+    # Note: Nécessite 'pip install yfinance'
+
+# --- Advanced Strategy Filters (OVERRIDE) ---
+advanced_filters:
+  structure:
+    allow_counter_trend: false  # 🔒 SECURITY BLOCK: Tendance UNIQUEMENT
+    strict_mode: true
