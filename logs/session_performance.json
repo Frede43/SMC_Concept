@@ -223,7 +223,63 @@
       "profit": 6.96,
       "duration_minutes": 446.18333333333334,
       "is_win": true
+    },
+    {
+      "ticket": 2207019603,
+      "symbol": "USDJPYm",
+      "direction": "BUY",
+      "entry_time": "2026-01-19 10:25:18",
+      "exit_time": "2026-01-20 00:14:41",
+      "hour_gmt": 8,
+      "day_of_week": "Monday",
+      "session": "london_open",
+      "strategy": "unknown",
+      "profit": -1.58,
+      "duration_minutes": 829.3833333333333,
+      "is_win": false
+    },
+    {
+      "ticket": 2207236676,
+      "symbol": "USDJPYm",
+      "direction": "BUY",
+      "entry_time": "2026-01-19 10:25:18",
+      "exit_time": "2026-01-20 00:14:41",
+      "hour_gmt": 8,
+      "day_of_week": "Monday",
+      "session": "london_open",
+      "strategy": "unknown",
+      "profit": -1.58,
+      "duration_minutes": 829.3833333333333,
+      "is_win": false
+    },
+    {
+      "ticket": 2207833245,
+      "symbol": "USDJPYm",
+      "direction": "BUY",
+      "entry_time": "2026-01-19 10:25:18",
+      "exit_time": "2026-01-20 00:20:24",
+      "hour_gmt": 8,
+      "day_of_week": "Monday",
+      "session": "london_open",
+      "strategy": "unknown",
+      "profit": -1.3900000000000001,
+      "duration_minutes": 835.1,
+      "is_win": false
+    },
+    {
+      "ticket": 2207841475,
+      "symbol": "USDJPYm",
+      "direction": "BUY",
+      "entry_time": "2026-01-19 10:25:18",
+      "exit_time": "2026-01-20 00:23:55",
+      "hour_gmt": 8,
+      "day_of_week": "Monday",
+      "session": "london_open",
+      "strategy": "unknown",
+      "profit": -1.5899999999999999,
+      "duration_minutes": 838.6166666666667,
+      "is_win": false
     }
   ],
-  "last_updated": "2026-01-19 17:51:32"
+  "last_updated": "2026-01-20 00:23:58"
 }

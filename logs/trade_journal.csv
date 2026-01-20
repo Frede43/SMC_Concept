@@ -123,3 +123,9 @@
 2026-01-19 17:51:32,2204700862,---EXIT---,,,,,,,,,,,,,,,,,,,,,,,,,1.34260,2026-01-19 17:51:32,,6.96,,0.32,CLOSED,Manual_Profit
 2026-01-19 18:37:15,2207019603,USDJPYm,SELL,158.09700,158.33900,157.61300,0.04,4.36,24.2,2.00,60.1,discount,46.6,bearish,bullish,BUY,"Contexte D1 BULLISH (Zone PREMIUM), Retest sur OB Baissier H4 (Setup Principal), Signal d'entrée M15 confirmé (Mitigation)",FVG|iFVG,95,False,False,False,none,none,ny,True,,,,,,,OPEN,
 2026-01-19 19:36:07,2207236676,USDJPYm,SELL,158.05000,158.33900,157.47200,0.03,4.36,28.9,2.00,57.7,discount,43.3,bearish,bullish,BUY,"Contexte D1 BULLISH (Zone PREMIUM), Retest sur OB Baissier H4 (Setup Principal), Signal d'entrée M15 confirmé (Mitigation)",FVG|iFVG,95,False,False,False,none,none,ny,True,,,,,,,OPEN,
+2026-01-20 00:14:45,2207833245,USDJPYm,SELL,158.09500,158.33900,157.60700,0.04,4.35,24.4,2.00,54.8,discount,46.4,bearish,bullish,BUY,"Contexte D1 BULLISH (Zone PREMIUM), Retest sur OB Baissier H4 (Setup Principal), Signal d'entrée M15 confirmé (Mitigation)",FVG|iFVG,95,False,False,False,none,none,asian,False,,,,,,,OPEN,
+2026-01-20 00:14:49,2207019603,---EXIT---,,,,,,,,,,,,,,,,,,,,,,,,,158.13300,2026-01-20 00:14:49,,-1.58,,-0.07,CLOSED,Manual_Loss
+2026-01-20 00:14:52,2207236676,---EXIT---,,,,,,,,,,,,,,,,,,,,,,,,,158.13300,2026-01-20 00:14:52,,-1.58,,-0.07,CLOSED,Manual_Loss
+2026-01-20 00:20:29,2207841475,USDJPYm,SELL,158.08400,158.33900,157.57400,0.04,4.35,25.5,2.00,54.0,discount,45.7,bearish,bullish,BUY,"Contexte D1 BULLISH (Zone PREMIUM), Retest sur OB Baissier H4 (Setup Principal), Signal d'entrée M15 confirmé (Mitigation)",FVG|iFVG,95,False,False,False,none,none,asian,False,,,,,,,OPEN,
+2026-01-20 00:20:34,2207833245,---EXIT---,,,,,,,,,,,,,,,,,,,,,,,,,158.15000,2026-01-20 00:20:34,,-1.39,,-0.06,CLOSED,Manual_Loss
+2026-01-20 00:23:58,2207841475,---EXIT---,,,,,,,,,,,,,,,,,,,,,,,,,158.14700,2026-01-20 00:23:58,,-1.59,,-0.07,CLOSED,Manual_Loss

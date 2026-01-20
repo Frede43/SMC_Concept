@@ -52,7 +52,8 @@ def run_fast_backtest():
     test_symbols = ['GBPUSDm', 'EURUSDm', 'XAUUSDm'] # US30m retiré (Data H1 instable)
     
     # Récupérer le timeframe demandé
-    target_tf = config.get('timeframes', {}).get('ltf', 'M15')
+    # target_tf = config.get('timeframes', {}).get('ltf', 'M15')
+    target_tf = 'M15'  # 🔒 FORCE M15 (Scalping Mode) pour valider stratégie défensive
     print(f"🎯 Timeframe Cible: {target_tf}")
     
     for symbol in test_symbols:
