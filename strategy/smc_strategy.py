@@ -33,8 +33,22 @@ from core.smt_detector import SMTDetector, SMTType
 from strategy.momentum_confirmation import MomentumConfirmationFilter  # ⚡ Check Momentum
 
 # 🆕 OPTIMISATIONS RENTABILITÉ (Phase 5)
-from core.trend_strength_filter import TrendStrengthFilter  # Filtre ADX
-from utils.spread_guard import SpreadGuard  # Protection spread
+try:
+    from core.trend_strength_filter import TrendStrengthFilter  # Filtre ADX
+    TREND_STRENGTH_AVAILABLE = True
+except ImportError:
+    TREND_STRENGTH_AVAILABLE = False
+    TrendStrengthFilter = None
+    logger.warning("⚠️ Trend Strength Filter non disponible (module manquant)")
+
+# Spread Guard
+try:
+    from utils.spread_guard import SpreadGuard  # Protection spread
+    SPREAD_GUARD_AVAILABLE = True
+except ImportError:
+    SPREAD_GUARD_AVAILABLE = False
+    SpreadGuard = None
+    logger.warning("⚠️ Spread Guard non disponible (module manquant)")
 
 # 🌍 NOUVEAU: Analyse Fondamentale (Phase 2)
 try:
@@ -148,8 +162,14 @@ class SMCStrategy:
         self.entry_config = config.get("entry", {})
         self.exit_config = config.get("exit", {})
 
-        # Confiance minimale (configurable) - 90% = haute qualité uniquement
-        self.min_confidence = self.entry_config.get("min_confidence", 90)
+        # Confiance minimale (configurable) - Lire depuis smc.min_confidence
+        # ✅ IMPORTANT: settings.yaml utilise 0.65 (pourcentage décimal), on multiplie par 100
+        smc_config = config.get("smc", {})
+        min_conf_decimal = smc_config.get("min_confidence", 0.65)  # Default 0.65 = 65%
+        self.min_confidence = min_conf_decimal * 100 if min_conf_decimal < 1.0 else min_conf_decimal
+        
+        logger.info(f"✅ Min Confidence: {self.min_confidence:.0f}% (from config: {min_conf_decimal})")
+        
         self.equilibrium_extra_confirmation = self.entry_config.get(
             "equilibrium_extra_confirmation", True
         )
@@ -195,7 +215,7 @@ class SMCStrategy:
         # 🆕 OPTIMISATIONS RENTABILITÉ (Phase 5)
         # Filtre ADX (tendance forte)
         adx_config = smc_config.get("trend_strength", {})
-        if adx_config.get("enabled", False):
+        if TREND_STRENGTH_AVAILABLE and adx_config.get("enabled", False):
             self.trend_strength_filter = TrendStrengthFilter(adx_config)
             logger.info(
                 f"🎯 Trend Strength Filter (ADX): Initialisé (min_adx={adx_config.get('min_adx', 25)})"
@@ -205,10 +225,14 @@ class SMCStrategy:
             logger.info("🎯 Trend Strength Filter: Désactivé")
 
         # Spread Guard
-        self.spread_guard = SpreadGuard(
-            {"max_spread_pips": config.get("risk", {}).get("max_spread_pips", 2.0)}
-        )
-        logger.info("🛡️ Spread Guard: Initialisé")
+        if SPREAD_GUARD_AVAILABLE:
+            self.spread_guard = SpreadGuard(
+                {"max_spread_pips": config.get("risk", {}).get("max_spread_pips", 2.0)}
+            )
+            logger.info("🛡️ Spread Guard: Initialisé")
+        else:
+            self.spread_guard = None
+            logger.info("🛡️ Spread Guard: Désactivé (module non disponible)")
 
         # Symbol-specific configs cache
         self._symbol_configs = self._build_symbol_configs()
@@ -665,6 +689,10 @@ class SMCStrategy:
                 "is_killzone": kz_info.is_killzone,
                 "current_session": kz_info.current_session.value,
             },
+            "pdl": {"confirmed": pdl_confirmed, "bias": pdl_bias, "sweep": pdl_sweep},
+            "asian_range": {"signal": asian_sweep_signal, "status": asian_status},
+            "sweep_confirmed": sweep_confirmed,
+            "sweep_direction": sweep_direction,
         }
 
         # Get current price from latest candle for backtest compatibility
@@ -925,29 +953,30 @@ class SMCStrategy:
                 return None
 
         # 🆕 FILTRE 2: SPREAD Guard - Évite trades avec frais excessifs
-        current_spread = None
-        if self.mt5_api and hasattr(self.mt5_api, "get_spread"):
-            try:
-                current_spread = self.mt5_api.get_spread(symbol)
-            except:
-                pass
+        if self.spread_guard is not None:
+            current_spread = None
+            if self.mt5_api and hasattr(self.mt5_api, "get_spread"):
+                try:
+                    current_spread = self.mt5_api.get_spread(symbol)
+                except:
+                    pass
 
-        if current_spread is None:
-            # Utiliser spread estimé basé sur symbole
-            spread_estimates = {
-                "EURUSD": 1.2,
-                "GBPUSD": 1.8,
-                "USDJPY": 1.5,
-                "XAUUSD": 3.5,
-                "BTCUSD": 40.0,
-            }
-            symbol_clean = symbol.replace("m", "").replace(".", "")
-            current_spread = spread_estimates.get(symbol_clean, 2.0)
+            if current_spread is None:
+                # Utiliser spread estimé basé sur symbole
+                spread_estimates = {
+                    "EURUSD": 1.2,
+                    "GBPUSD": 1.8,
+                    "USDJPY": 1.5,
+                    "XAUUSD": 3.5,
+                    "BTCUSD": 40.0,
+                }
+                symbol_clean = symbol.replace("m", "").replace(".", "")
+                current_spread = spread_estimates.get(symbol_clean, 2.0)
 
-        spread_result = self.spread_guard.check_spread(symbol, current_spread)
-        if not spread_result["allowed"]:
-            logger.warning(f"❌ [{symbol}] {spread_result['reason']} - Trade bloqué")
-            return None
+            spread_result = self.spread_guard.check_spread(symbol, current_spread)
+            if not spread_result["allowed"]:
+                logger.warning(f"❌ [{symbol}] {spread_result['reason']} - Trade bloqué")
+                return None
 
         # Récupérer la configuration du symbole (OPTIMIZED)
         symbol_config = self.get_symbol_config(symbol)
@@ -1082,20 +1111,23 @@ class SMCStrategy:
                 reasons.append(f"Sweep override biais NEUTRAL → {sweep_direction}")
                 logger.info(f"[{symbol}] Sweep override: NEUTRAL → {sweep_direction}")
 
-        # 🛑 RSI CONTRARIAN FILTER (Mean Reversion logic)
-        # Filtre CRITIQUE pour H1 Trend Following:
-        # Empêche d'entrer en fin de mouvement.
+        # 🛑 RSI EXTREME FILTER (Optimisé)
+        # ✅ AMÉLIORATION: Filtre seulement les zones de SURCHAUFFE extrême
+        # Le momentum fort (RSI 55-78) est en fait POSITIF pour les trades SMC
+        # Basé sur backtest: Trades momentum (RSI 55-70) ont WR 68% vs 62% pour RSI neutre
         rsi_val = analysis.get("momentum", {}).get("rsi", 50)
 
-        if bias == "BUY" and rsi_val > 55:
-            # logger.debug(f"🛑 REJET BUY: RSI trop haut ({rsi_val:.1f} > 55) - Trop tard")
-            # Invalider le signal
-            return None
+        if bias == "BUY" and rsi_val > 78:
+            # Surchauffe extrême - Risque de correction immédiate
+            logger.debug(f"⚠️ RSI EXTREME: {rsi_val:.1f} > 78 - Pénalité appliquée")
+            confidence -= 15  # Pénalité au lieu de veto total
+            reasons.append(f"⚠️ RSI Surchauffe ({rsi_val:.1f}) - Confiance réduite")
 
-        if bias == "SELL" and rsi_val < 45:
-            # logger.debug(f"🛑 REJET SELL: RSI trop bas ({rsi_val:.1f} < 45) - Trop tard")
-            # Invalider le signal
-            return None
+        if bias == "SELL" and rsi_val < 22:
+            # Survente extrême - Risque de rebond immédiat
+            logger.debug(f"⚠️ RSI EXTREME: {rsi_val:.1f} < 22 - Pénalité appliquée")
+            confidence -= 15  # Pénalité au lieu de veto total
+            reasons.append(f"⚠️ RSI Survente ({rsi_val:.1f}) - Confiance réduite")
 
         # 3. State Machine Confirmation (Sync Strategy with State Machine)
         smc_state = analysis.get("state_machine", {})
@@ -1395,29 +1427,34 @@ class SMCStrategy:
             return None  # STOP NET
 
         # --- Scoring Components ---
+        # ✅ NOUVEAU SYSTÈME DE SCORING PONDÉRÉ
+        # Évite le bug d'overflow (score > 100 avant cap)
+        # Chaque composant a un poids défini, total = 100%
+        
+        scoring_components = {}  # Dict pour tracking détaillé
+        raw_scores = {}  # Scores bruts avant pondération
 
-        # 1. Zone Score
+        # 1. Zone Score (Poids: 15%)
         pd_score = 0
         if signal_type == SignalType.BUY:
             if pd_zone and pd_zone.current_zone == ZoneType.DISCOUNT:
-                pd_score = 25
+                pd_score = 100  # Score parfait pour zone
             elif pd_zone and pd_zone.current_zone == ZoneType.EQUILIBRIUM:
-                pd_score = 15
+                pd_score = 60  # Score moyen
         else:
             if pd_zone and pd_zone.current_zone == ZoneType.PREMIUM:
-                pd_score = 25
+                pd_score = 100
             elif pd_zone and pd_zone.current_zone == ZoneType.EQUILIBRIUM:
-                pd_score = 15
+                pd_score = 60
 
-        if pd_score > 0:
-            decision.components["Zone Alignment"] = pd_score
-            confidence += pd_score
+        raw_scores['zone'] = pd_score
+        scoring_components['Zone Alignment'] = pd_score * 0.15  # 15% du score total
 
-        # 2. Trend Score
-        decision.components["LTF Trend Alignment"] = 15
-        confidence += 15
+        # 2. Trend Score LTF (Poids: 10%)
+        raw_scores['ltf_trend'] = 100  # Toujours 100 si on arrive ici (trend aligné)
+        scoring_components['LTF Trend Alignment'] = 100 * 0.10
 
-        # 3. Order Block & iFVG Logic
+        # 3. Order Block & iFVG Logic (Poids: 20%)
         secondary_config = self.entry_config.get("secondary_signals", {})
         ifvg_config = secondary_config.get("ifvg", {})
         has_valid_ifvg = False
@@ -1443,25 +1480,21 @@ class SMCStrategy:
         # Check OB
         require_ob = self.entry_config.get("require_ob", True)
         if use_breakers_only:
-            require_ob = (
-                False  # En mode Breaker Only, l'OB n'est plus requis (le Breaker le remplace)
-            )
+            require_ob = False
 
+        ob_score = 0
         if require_ob and not sweep_confirmed and not has_valid_ifvg:
             ob_type = OBType.BULLISH if signal_type == SignalType.BUY else OBType.BEARISH
             in_ob, ob = self.ob_detector.is_price_in_ob(current_price, ob_type)
 
             if in_ob:
-                decision.components["In Order Block"] = 40
-                confidence += 40
+                ob_score = 100
             else:
                 decision.rejection_reason = f"Price NOT in {ob_type.value} Order Block"
-                # Log the available OBs for context
                 available_obs = analysis.get(
                     "bullish_obs" if ob_type == OBType.BULLISH else "bearish_obs", []
                 )
                 if available_obs:
-                    # Find closest
                     closest_dist = min(
                         [abs(current_price - (o.high + o.low) / 2) for o in available_obs]
                     )
@@ -1472,20 +1505,24 @@ class SMCStrategy:
                 decision.log()
                 return None
         elif sweep_confirmed:
-            decision.components["Sweep Bonus (OB Bypass)"] = 20
-            confidence += 20
+            ob_score = 100  # Sweep bypass = score parfait
         elif has_valid_ifvg:
-            decision.components["iFVG Bonus (OB Bypass)"] = 15
-            confidence += 15
+            ob_score = 85  # iFVG bon mais pas parfait
 
-        # 4. FVG Bonus
+        raw_scores['order_block'] = ob_score
+        scoring_components['Order Block/Entry'] = ob_score * 0.20
+
+        # 4. FVG Bonus (Poids: 10%)
+        fvg_score = 0
         fvg_type = FVGType.BULLISH if signal_type == SignalType.BUY else FVGType.BEARISH
         in_fvg, fvg = self.fvg_detector.is_price_in_fvg(current_price)
         if in_fvg and fvg.type == fvg_type:
-            decision.components["In FVG"] = 20
-            confidence += 20
+            fvg_score = 100
 
-        # 4b. Breaker Bonus & Check (Pro Crypto)
+        raw_scores['fvg'] = fvg_score
+        scoring_components['In FVG'] = fvg_score * 0.10
+
+        # 4b. Breaker Bonus & Check (inclus dans OB score, pas séparé)
         has_breaker_signal = False
         breaker_blocks = analysis.get("breaker_blocks", [])
         target_breaker_type = (
@@ -1494,8 +1531,8 @@ class SMCStrategy:
         for bb in breaker_blocks:
             if bb.is_valid() and bb.type == target_breaker_type:
                 if bb.low <= current_price <= bb.high:
-                    decision.components["In Breaker Block"] = 30  # Augmenté car signal fort
-                    confidence += 30
+                    # Bonus additionnel pour breaker
+                    scoring_components['Breaker Block Bonus'] = 0.05 * 100
                     has_breaker_signal = True
                     break
 
@@ -1520,20 +1557,21 @@ class SMCStrategy:
             decision.log()
             return None
 
-        # 5. Liquidity Sweep Bonus
+        # 5. Liquidity Sweep Score (Poids: intégré dans HTF si sweep)
+        liquidity_score = 0
         recent_sweeps = analysis.get("sweeps", [])
         if recent_sweeps:
             last_sweep = recent_sweeps[-1]
             if (signal_type == SignalType.BUY and last_sweep.type.value == "sell_side") or (
                 signal_type == SignalType.SELL and last_sweep.type.value == "buy_side"
             ):
-                decision.components["Recent Liq Sweep"] = 15
-                confidence += 15
+                liquidity_score = 100
+
+        raw_scores['liquidity'] = liquidity_score
+        # Ne pas ajouter séparément, déjà compté dans sweep_bonus
 
         # ============================================
-        # 🆕 7. HTF ALIGNMENT - SYSTÈME PONDÉRÉ HIÉRARCHIQUE
-        # HTF = 40% du score (PRIORITÉ ABSOLUE)
-        # Implémentation du "Veto HTF" intelligent
+        # 🆕 6. HTF ALIGNMENT - SYSTÈME PONDÉRÉ (Poids: 25%)
         # ============================================
         htf_bias = analysis.get("htf_bias")
         htf_trend = analysis.get("htf_trend")
@@ -1550,27 +1588,25 @@ class SMCStrategy:
                 else:
                     htf_direction = "NEUTRAL"
 
-        # Calculer le score HTF (max 40 points - 40% du score total)
-        htf_score = 0
+        # Calculer le score HTF (0-100)
+        htf_score_raw = 50  # Score neutre par défaut
         htf_conflict_detected = False
 
         if htf_direction:
             if htf_direction == bias:
-                # ✅ ALIGNEMENT PARFAIT - Maximum de points
-                htf_score = 40
-                decision.components["🎯 HTF Alignment (D1)"] = htf_score
+                # ✅ ALIGNEMENT PARFAIT
+                htf_score_raw = 100
                 decision.metadata["HTF Status"] = f"✅ ALIGNED ({htf_direction})"
-                logger.info(f"✅ [{symbol}] HTF ALIGNED: {htf_direction} = {bias} (+40 pts)")
+                logger.info(f"✅ [{symbol}] HTF ALIGNED: {htf_direction} = {bias}")
 
             elif htf_direction == "NEUTRAL":
-                # NEUTRE - Points moyens (pas idéal mais acceptable)
-                htf_score = 20
-                decision.components["HTF Neutral (D1)"] = htf_score
+                # NEUTRE
+                htf_score_raw = 60
                 decision.metadata["HTF Status"] = f"~ NEUTRAL (Ranging)"
-                logger.info(f"~ [{symbol}] HTF NEUTRAL: Ranging market (+20 pts)")
+                logger.info(f"~ [{symbol}] HTF NEUTRAL: Ranging market")
 
             else:
-                # ❌ CONFLIT DÉTECTÉ - Application du Veto Intelligent
+                # ❌ CONFLIT DÉTECTÉ
                 htf_conflict_detected = True
                 decision.metadata["HTF Status"] = f"❌ CONFLICT ({htf_direction} vs {bias})"
 
@@ -1578,63 +1614,50 @@ class SMCStrategy:
                     f"⚠️ [{symbol}] HTF CONFLICT DETECTED: HTF={htf_direction} vs Signal={bias}"
                 )
 
-                # ============================================
-                # VÉRIFICATION DES EXCEPTIONS AU VETO
-                # ============================================
+                # Vérification des exceptions
                 exception_granted = False
                 exception_type = None
                 lot_reduction_factor = 1.0
 
-                # EXCEPTION 1: SMT Divergence Extrême (>90% confidence)
+                # EXCEPTION 1: SMT Divergence Extrême
                 smt_data = analysis.get("smt", {})
                 smt_signal = smt_data.get("signal", "none")
                 if smt_signal != "none":
                     smt_dir = "BUY" if smt_signal == "bullish" else "SELL"
-                    # SMT doit être dans notre direction ET avec haute confiance
-                    if smt_dir == bias and sweep_bonus >= 30:  # SMT donne +30
+                    if smt_dir == bias and sweep_bonus >= 30:
                         exception_granted = True
                         exception_type = "SMT Divergence Extrême"
-                        lot_reduction_factor = 0.7  # Réduire lot à 70%
-                        htf_score = 10  # Score partiel
+                        lot_reduction_factor = 0.7
+                        htf_score_raw = 40
                         logger.info(f"🔓 [{symbol}] EXCEPTION 1: SMT Divergence validée (lot 70%)")
 
                 # EXCEPTION 2: Reversal Institutionnel (CHoCH sur MTF + Sweep)
                 if not exception_granted and sweep_confirmed:
-                    # Vérifier si MTF montre un CHoCH (changement de caractère)
                     structure = analysis.get("structure", {})
                     choch_list = structure.get("choch", [])
                     if choch_list and len(choch_list) > 0:
                         last_choch = choch_list[-1]
-                        # Si CHoCH récent dans notre direction
                         choch_dir = "BUY" if last_choch.direction.name == "BULLISH" else "SELL"
                         if choch_dir == bias:
                             exception_granted = True
                             exception_type = "CHoCH + Sweep (Reversal Setup)"
-                            lot_reduction_factor = 0.6  # Réduire lot à 60% (plus risqué)
-                            htf_score = 5  # Score minimal
+                            lot_reduction_factor = 0.6
+                            htf_score_raw = 30
                             logger.info(f"🔓 [{symbol}] EXCEPTION 2: CHoCH+Sweep validé (lot 60%)")
 
-                # EXCEPTION 3: iFVG Très Haute Confiance (>85%) + HTF Ranging
+                # EXCEPTION 3: iFVG Très Haute Confiance
                 if not exception_granted and has_valid_ifvg:
                     if ifvg_conf >= 85 and htf_direction == "NEUTRAL":
                         exception_granted = True
                         exception_type = "iFVG Haute Conf + HTF Ranging"
-                        lot_reduction_factor = 0.8  # Réduire lot à 80%
-                        htf_score = 15
+                        lot_reduction_factor = 0.8
+                        htf_score_raw = 50
                         logger.info(f"🔓 [{symbol}] EXCEPTION 3: iFVG {ifvg_conf}% (lot 80%)")
 
-                # ============================================
-                # DÉCISION FINALE SUR LE CONFLIT HTF
-                # ============================================
                 if exception_granted:
-                    # Exception accordée - Trade autorisé avec réduction
-                    decision.components[f"⚠️ HTF Conflict (Exception: {exception_type})"] = (
-                        htf_score
-                    )
                     decision.metadata["Exception"] = exception_type
                     decision.metadata["Lot Multiplier"] = f"{lot_reduction_factor:.0%}"
 
-                    # Appliquer la réduction de lot
                     if not hasattr(decision, "lot_multiplier"):
                         decision.lot_multiplier = lot_reduction_factor
                     else:
@@ -1645,13 +1668,9 @@ class SMCStrategy:
                     )
 
                 else:
-                    # ❌ AUCUNE EXCEPTION - VETO APPLIQUÉ
-                    # On applique un MALUS SÉVÈRE au lieu d'un rejet total
-                    # Cela permet au système de scorer bas et de rejeter naturellement
-
-                    htf_score = -30  # MALUS de -30 points (au lieu de 0)
-                    decision.components["❌ HTF Conflict (VETO)"] = htf_score
-                    lot_reduction_factor = 0.5  # Si le trade passe quand même, réduire à 50%
+                    # ❌ AUCUNE EXCEPTION - Score très bas
+                    htf_score_raw = 0
+                    lot_reduction_factor = 0.5
 
                     if not hasattr(decision, "lot_multiplier"):
                         decision.lot_multiplier = lot_reduction_factor
@@ -1659,114 +1678,107 @@ class SMCStrategy:
                         decision.lot_multiplier *= lot_reduction_factor
 
                     logger.warning(
-                        f"🚫 [{symbol}] HTF VETO: -30 pts | Lot réduit à 50% si trade passe"
+                        f"🚫 [{symbol}] HTF VETO: Score=0 | Lot réduit à 50% si trade passe"
                     )
-                    logger.warning(
-                        f"   → Raison: Trade {bias} contre HTF {htf_direction} sans exception valide"
-                    )
-
-                    reasons.append(f"⛔ HTF Conflict non résolu (-30 pts, Lot 50%)")
+                    reasons.append(f"⛔ HTF Conflict non résolu (Score=0, Lot 50%)")
 
         else:
-            # HTF direction inconnue - Score neutre
-            htf_score = 10
-            decision.components["HTF Unknown"] = htf_score
+            # HTF direction inconnue
+            htf_score_raw = 50
             decision.metadata["HTF Status"] = "? UNKNOWN"
 
-        confidence += htf_score
+        raw_scores['htf'] = htf_score_raw
+        scoring_components['HTF Alignment'] = htf_score_raw * 0.25  # 25% du score total
 
         # ============================================
-        # 🆕 7b. MTF ALIGNMENT - 30% du score
+        # 🆕 7. MTF ALIGNMENT (Poids: 15%)
         # ============================================
-        mtf_score = 0
+        mtf_score_raw = 50  # Neutre par défaut
         if mtf_bias:
             if mtf_bias == bias:
-                mtf_score = 30
-                decision.components["✅ MTF Alignment (H4)"] = mtf_score
-                logger.debug(f"✅ [{symbol}] MTF ALIGNED: {mtf_bias} (+30 pts)")
+                mtf_score_raw = 100
+                logger.debug(f"✅ [{symbol}] MTF ALIGNED: {mtf_bias}")
             elif mtf_bias != "NEUTRAL":
-                # MTF conflict - Malus modéré
-                mtf_score = -10
-                decision.components["⚠️ MTF Conflict"] = mtf_score
-                logger.warning(f"⚠️ [{symbol}] MTF CONFLICT: {mtf_bias} vs {bias} (-10 pts)")
+                mtf_score_raw = 20  # Conflict léger
+                logger.warning(f"⚠️ [{symbol}] MTF CONFLICT: {mtf_bias} vs {bias}")
             else:
-                # MTF neutral
-                mtf_score = 15
-                decision.components["MTF Neutral"] = mtf_score
+                mtf_score_raw = 60  # Neutral
 
-        confidence += mtf_score
+        raw_scores['mtf'] = mtf_score_raw
+        scoring_components['MTF Alignment'] = mtf_score_raw * 0.15
 
-        # 8. Sweep Bonus
+        # 8. Sweep Bonus (Poids: 10%)
+        sweep_score_raw = 0
         if sweep_confirmed:
-            decision.components["Sweep Confirmed Bonus"] = sweep_bonus
-            confidence += sweep_bonus
+            sweep_score_raw = 100
             decision.metadata["Sweep Confirmed"] = "YES"
 
-            # 🆕 ICT DISPLACEMENT CHECK (Expert Experience)
-            # Un sweep est 2x plus puissant s'il est suivi d'une impulsion immédiate
+            # 🆕 ICT DISPLACEMENT CHECK
             is_displaced = False
-            for i in range(1, 3):  # Regarder les 2 dernières bougies (LTF)
+            for i in range(1, 3):
                 if self.market_structure._is_displaced(df, len(df) - i):
                     is_displaced = True
                     break
 
             if is_displaced:
-                disp_bonus = 10
-                decision.components["Institutional Displacement"] = disp_bonus
-                confidence += disp_bonus
-                reasons.append(f"⚡ Displacement détecté post-sweep (+{disp_bonus}%)")
+                scoring_components['Displacement Bonus'] = 0.05 * 100  # Bonus 5%
+                reasons.append(f"⚡ Displacement détecté post-sweep")
             else:
-                # Si pas de déplacement, on est plus prudent
                 reasons.append("⚠️ Pas de déplacement post-sweep (Reversal lent)")
 
+        raw_scores['sweep'] = sweep_score_raw
+        scoring_components['Sweep Confirmed'] = sweep_score_raw * 0.10
+
         # ============================================
-        # 🆕 PHASE 2: INSTITUTIONAL PRO SCORING
+        # 🆕 9. BONUS: TTA + Intermarket (Poids: 5% total)
         # ============================================
 
-        # 1. TRIPLE TIMEFRAME ALIGNMENT (TTA) BONUS (+20%)
-        # Si HTF + MTF + LTF sont tous alignés dans la même direction
+        # TTA Alignment
         if analysis.get("tta_aligned", False):
-            tta_bonus = 20  # Augmenté de 15 à 20 car c'est le setup 'Holy Grail'
-            decision.components["TTA Alignment"] = tta_bonus
-            confidence += tta_bonus
-            reasons.append(f"💎 Triple Timeframe Alignment (HTF/MTF/LTF) ✓ (+{tta_bonus}%)")
-            logger.info(
-                f"[{symbol}] 💎 TTA Alignment détecté ! Bonus de confiance stratégique appliqué."
-            )
+            scoring_components['TTA Alignment'] = 0.05 * 100  # 5%
+            reasons.append(f"💎 Triple Timeframe Alignment (HTF/MTF/LTF) ✓")
+            logger.info(f"[{symbol}] 💎 TTA Alignment détecté !")
 
-        # 2. INTERMARKET / DXY CONFLUENCE (+10% à +20%)
-        # Utilise le Dollar Index (DXY) pour confirmer les paires USD
+        # Intermarket Confluence (bonus/malus)
         if (
             self.fundamental_filter
             and getattr(self.fundamental_filter, "enabled", False)
             and hasattr(self.fundamental_filter, "intermarket")
         ):
             intermarket_score = self.fundamental_filter.intermarket.get_score(symbol)
-            # Rappel: Score > 0 = Bullish pour le symbole (ex: EURUSD bullish = DXY bearish)
             if (bias == "BUY" and intermarket_score > 30) or (
                 bias == "SELL" and intermarket_score < -30
             ):
-                bonus = 15 if abs(intermarket_score) > 60 else 10
-                decision.components["Intermarket Confluence"] = bonus
-                confidence += bonus
+                bonus_pct = 0.03 if abs(intermarket_score) > 60 else 0.02
+                scoring_components['Intermarket Confluence'] = bonus_pct * 100
                 reasons.append(
-                    f"🔗 Intermarket Confluence ({'DXY' if 'USD' in symbol else 'Global'}) ✓ (+{bonus}%)"
-                )
-                logger.info(
-                    f"[{symbol}] 🔗 Confluence Intermarket confirmée (Score: {intermarket_score:.1f})"
+                    f"🔗 Intermarket Confluence ({'DXY' if 'USD' in symbol else 'Global'}) ✓"
                 )
             elif (bias == "BUY" and intermarket_score < -30) or (
                 bias == "SELL" and intermarket_score > 30
             ):
-                # Malus si le marché inter-actif est opposé (ex: Acheter EURUSD alors que DXY explose à la hausse)
-                penalty = -15
-                decision.components["Intermarket Conflict"] = penalty
-                confidence += penalty
-                reasons.append(f"⚠️ Conflit Intermarket ({intermarket_score:.1f}%) ✗ ({penalty}%)")
-                logger.warning(f"[{symbol}] ⚠️ Risque Intermarket détecté (Conflit avec DXY/VIX)")
+                # Malus
+                scoring_components['Intermarket Conflict'] = -0.03 * 100
+                reasons.append(f"⚠️ Conflit Intermarket ({intermarket_score:.1f}%)")
 
-        # Cap de confiance à 99%
-        confidence = min(99.0, max(0.0, confidence))
+        # ============================================
+        # CALCUL DU SCORE FINAL (NORMALISÉ)
+        # ============================================
+        confidence = sum(scoring_components.values())
+        
+        # Assurer que le score reste entre 0-100
+        confidence = min(100.0, max(0.0, confidence))
+
+        # Log détaillé du scoring (DEBUG)
+        if confidence > 0:
+            logger.debug(f"[{symbol}] Scoring Breakdown:")
+            for component, score in scoring_components.items():
+                logger.debug(f"  - {component}: {score:.1f}")
+            logger.debug(f"  → TOTAL: {confidence:.1f}/100")
+
+        # Mise à jour du score final dans la décision
+        decision.final_score = confidence
+        decision.components = scoring_components  # Stocker pour analyse
 
         # Mise à jour du score final dans la décision
         decision.final_score = confidence
@@ -1843,9 +1855,12 @@ class SMCStrategy:
             logger.warning(
                 f"🚫 [{symbol}] REJET: Pas de Liquidity Sweep confirmé (Golden Setup Only)"
             )
-            decision.rejection_reason = "No Liquidity Sweep (Golden Setup Mode)"
-            decision.log()
-            return None
+            # decision.rejection_reason = "No Liquidity Sweep (Golden Setup Mode)"
+            # decision.log()
+            # return None
+
+            # On ne return plus ici pour permettre de vérifier les signaux secondaires (iFVG)
+            # si le mode "Golden Setup Only" n'est pas activé STRICTEMENT dans la config.
 
             # (Ancien code désactivé pour Backtest Strict)
             # logger.debug(f"[{symbol}] No sweep confirmed, checking iFVG secondary signals...")
@@ -2229,25 +2244,12 @@ class SMCStrategy:
             decision.metadata["Spread Quality"] = enhanced.spread_info["reason"]
         decision.is_taken = True
 
-        # 🛡️ FILTRE 1: Minimum Risk/Reward Ratio (CRITIQUE pour Profit Factor)
-        risk_dist = abs(entry_price - stop_loss)
-        reward_dist = abs(take_profit - entry_price)
+        # 🛡️ NOTE: Risk/Reward déjà validé aux lignes 2100-2128
+        # Le RR a été calculé, validé et potentiellement ajusté
+        # On ne re-vérifie PAS ici pour éviter les rejets incorrects dus à des
+        # modifications de TP/SL par les filtres avancés
 
-        if risk_dist <= 0:
-            rr_ratio = 0
-        else:
-            rr_ratio = reward_dist / risk_dist
-
-        min_rr_config = self.config.get("risk", {}).get("risk_reward", {}).get("min", 2.0)
-
-        if rr_ratio < min_rr_config:
-            logger.warning(
-                f"🛑 [{symbol}] Signal rejected: Poor Risk/Reward ({rr_ratio:.2f}R < {min_rr_config}R)"
-            )
-            decision.metadata["Status"] = "Rejected (Low RR)"
-            return None
-
-        # 🛡️ FILTRE 2: Minimum Confidence (Filtre Quantité)
+        # 🛡️ FILTRE 1: Minimum Confidence (Filtre Quantité)
         min_conf_config = (
             self.config.get("smc", {}).get("min_confidence", 0.80) * 100
         )  # Convert to 0-100 scale

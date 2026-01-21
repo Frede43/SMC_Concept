@@ -88,8 +88,7 @@ class MarketStructure:
         self.current_trend = Trend.RANGING
 
     def _is_displaced(self, df: pd.DataFrame, index: int) -> bool:
-        """Compatibilité legacy pour smc_strategy.py"""
-        if index < 0 or index >= len(df): return False
+        """Vérifie si la bougie à 'index' montre un déplacement impulsif (corps large)."""
         if index < 10: return True
         
         candle = df.iloc[index]
@@ -100,23 +99,9 @@ class MarketStructure:
         
         if avg_range == 0: return True
         
+        # ICT Displacement: Le corps doit être significatif par rapport au range moyen
         return body_size > (avg_range * self.displacement_multiplier)
-
-    def _is_displaced_numpy(self, index: int, closes: np.ndarray, opens: np.ndarray, highs: np.ndarray, lows: np.ndarray) -> bool:
-        """Version optimisée Numpy de _is_displaced (sans DataFrame overhead)."""
-        if index < 10: return True
         
-        body_size = abs(closes[index] - opens[index])
-        
-        # Moyenne du range (High-Low) des 10 dernières bougies
-        # Slice numpy: [index-10 : index]
-        ranges = highs[index-10:index] - lows[index-10:index]
-        avg_range = np.mean(ranges)
-        
-        if avg_range == 0: return True
-        
-        return body_size > (avg_range * self.displacement_multiplier)
-
     def analyze(self, df: pd.DataFrame) -> dict:
         """
         Analyse complète de la structure de marché.
@@ -127,6 +112,8 @@ class MarketStructure:
         Returns:
             Dict contenant les swing points, BOS/CHoCH et tendance
         """
+        logger.debug(f"Analyzing market structure on {len(df)} bars")
+        
         # Reset des listes
         self.swing_highs = []
         self.swing_lows = []
@@ -151,59 +138,56 @@ class MarketStructure:
             'last_lh': self._get_last_swing(is_high=True, is_higher=False),
             'last_ll': self._get_last_swing(is_high=False, is_higher=False),
         }
-
+    
     def _find_swing_points(self, df: pd.DataFrame) -> None:
-        """Identifie les points de swing (highs et lows) - OPTIMISÉ NUMPY."""
-        # Extraction one-shot des numpy arrays
-        highs = df['high'].values
-        lows = df['low'].values
+        """Identifie les points de swing (highs et lows)."""
         n = self.swing_strength
-        length = len(highs)
-        timestamps = df.index
         
-        # Boucle optimisée sur index uniquement (pas d'iloc)
-        # On peut utiliser une fenêtre glissante virtuelle
-        
-        for i in range(n, length - n):
-            # Optimisation: Vérification rapide avant boucle
-            # Check neighbors immediately adjacent first (statistiquement élimine 80% des cas)
-            if highs[i] <= highs[i-1] or highs[i] <= highs[i+1]:
-                is_swing_high = False
-            else:
-                # Full verification
-                is_swing_high = True
-                current_high = highs[i]
-                for j in range(2, n + 1):
-                    if highs[i - j] >= current_high or highs[i + j] >= current_high:
-                        is_swing_high = False
-                        break
+        for i in range(n, len(df) - n):
+            # Vérifier Swing High
+            is_swing_high = True
+            current_high = df.iloc[i]['high']
+            
+            for j in range(1, n + 1):
+                if df.iloc[i - j]['high'] >= current_high or df.iloc[i + j]['high'] >= current_high:
+                    is_swing_high = False
+                    break
             
             if is_swing_high:
-                self.swing_highs.append(SwingPoint(i, float(current_high), timestamps[i], True, True))
+                swing = SwingPoint(
+                    index=i,
+                    price=current_high,
+                    timestamp=df.index[i] if isinstance(df.index, pd.DatetimeIndex) else pd.Timestamp.now(),
+                    is_high=True,
+                    confirmed=True
+                )
+                self.swing_highs.append(swing)
             
-            # Check Low
-            if lows[i] >= lows[i-1] or lows[i] >= lows[i+1]:
-                is_swing_low = False
-            else:
-                is_swing_low = True
-                current_low = lows[i]
-                for j in range(2, n + 1):
-                    if lows[i - j] <= current_low or lows[i + j] <= current_low:
-                        is_swing_low = False
-                        break
+            # Vérifier Swing Low
+            is_swing_low = True
+            current_low = df.iloc[i]['low']
+            
+            for j in range(1, n + 1):
+                if df.iloc[i - j]['low'] <= current_low or df.iloc[i + j]['low'] <= current_low:
+                    is_swing_low = False
+                    break
             
             if is_swing_low:
-                self.swing_lows.append(SwingPoint(i, float(current_low), timestamps[i], False, True))
+                swing = SwingPoint(
+                    index=i,
+                    price=current_low,
+                    timestamp=df.index[i] if isinstance(df.index, pd.DatetimeIndex) else pd.Timestamp.now(),
+                    is_high=False,
+                    confirmed=True
+                )
+                self.swing_lows.append(swing)
         
         logger.debug(f"Found {len(self.swing_highs)} swing highs and {len(self.swing_lows)} swing lows")
     
     def _identify_structure_breaks(self, df: pd.DataFrame) -> None:
-        """Identifie les Break of Structure (BOS) et Change of Character (CHoCH) - OPTIMISÉ NUMPY."""
+        """Identifie les Break of Structure (BOS) et Change of Character (CHoCH)."""
         
         # Combiner et trier tous les swings par index
-        if not self.swing_highs and not self.swing_lows:
-            return
-            
         all_swings = sorted(
             self.swing_highs + self.swing_lows,
             key=lambda x: x.index
@@ -211,42 +195,27 @@ class MarketStructure:
         
         if len(all_swings) < 3:
             return
-            
-        # Extraction Numpy pour accès rapide
-        closes = df['close'].values
-        opens = df['open'].values
-        highs = df['high'].values
-        lows = df['low'].values
-        timestamps = df.index
-        length = len(closes)
         
+        # Variables pour suivre la structure
         last_valid_high: Optional[SwingPoint] = None
         last_valid_low: Optional[SwingPoint] = None
         internal_trend = Trend.RANGING
         
-        # Pour éviter de re-checker des barres déjà passées
-        # On ne check que devant le swing
-        
         for i, current_swing in enumerate(all_swings):
-            # Chercher les cassures à partir de l'index du swing + 1
-            # Mais on s'arrête si on trouve une cassure
-            
-            start_idx = current_swing.index + 1
-            if start_idx >= length:
-                continue
+            # Chercher les cassures
+            for bar_idx in range(current_swing.index + 1, len(df)):
+                bar = df.iloc[bar_idx]
                 
-            for bar_idx in range(start_idx, length):
-                close_price = closes[bar_idx]
-                
-                # Vérifier cassure de swing high
+                # Vérifier cassure de swing high (potentiel BOS bullish ou CHoCH)
                 if current_swing.is_high and not current_swing.broken:
-                    if close_price > current_swing.price:
-                        # Filtre de déplacement (Numpy version)
-                        if not self._is_displaced_numpy(bar_idx, closes, opens, highs, lows):
+                    if bar['close'] > current_swing.price:
+                        # Filtre de déplacement: la cassure doit être impulsive (ICT)
+                        if not self._is_displaced(df, bar_idx):
                             continue
                             
                         current_swing.broken = True
                         
+                        # Déterminer si c'est un BOS ou CHoCH
                         if internal_trend == Trend.BULLISH:
                             structure_type = StructureType.BOS
                         elif internal_trend == Trend.BEARISH:
@@ -258,25 +227,27 @@ class MarketStructure:
                             type=structure_type,
                             direction=Trend.BULLISH,
                             break_index=bar_idx,
-                            break_price=float(close_price),
+                            break_price=bar['close'],
                             swing_index=current_swing.index,
                             swing_price=current_swing.price,
-                            timestamp=timestamps[bar_idx]
+                            timestamp=df.index[bar_idx] if isinstance(df.index, pd.DatetimeIndex) else pd.Timestamp.now()
                         ))
                         
                         if structure_type == StructureType.CHOCH:
                             internal_trend = Trend.BULLISH
+                            logger.info(f"⚡ CHoCH BULLISH Detected @ {bar['close']:.5f} (Time: {bar_idx})")
                         break
                 
-                # Vérifier cassure de swing low
+                # Vérifier cassure de swing low (potentiel BOS bearish ou CHoCH)
                 elif not current_swing.is_high and not current_swing.broken:
-                    if close_price < current_swing.price:
-                        # Filtre de déplacement (Numpy version)
-                        if not self._is_displaced_numpy(bar_idx, closes, opens, highs, lows):
+                    if bar['close'] < current_swing.price:
+                        # Filtre de déplacement: la cassure doit être impulsive (ICT)
+                        if not self._is_displaced(df, bar_idx):
                             continue
                             
                         current_swing.broken = True
                         
+                        # Déterminer si c'est un BOS ou CHoCH
                         if internal_trend == Trend.BEARISH:
                             structure_type = StructureType.BOS
                         elif internal_trend == Trend.BULLISH:
@@ -288,14 +259,15 @@ class MarketStructure:
                             type=structure_type,
                             direction=Trend.BEARISH,
                             break_index=bar_idx,
-                            break_price=float(close_price),
+                            break_price=bar['close'],
                             swing_index=current_swing.index,
                             swing_price=current_swing.price,
-                            timestamp=timestamps[bar_idx]
+                            timestamp=df.index[bar_idx] if isinstance(df.index, pd.DatetimeIndex) else pd.Timestamp.now()
                         ))
                         
                         if structure_type == StructureType.CHOCH:
                             internal_trend = Trend.BEARISH
+                            logger.info(f"⚡ CHoCH BEARISH Detected @ {bar['close']:.5f} (Time: {bar_idx})")
                         break
         
         logger.debug(f"Found {len(self.structure_breaks)} structure breaks")

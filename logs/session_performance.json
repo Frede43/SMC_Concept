@@ -279,7 +279,21 @@
       "profit": -1.5899999999999999,
       "duration_minutes": 838.6166666666667,
       "is_win": false
+    },
+    {
+      "ticket": 2217517568,
+      "symbol": "USDJPYm",
+      "direction": "BUY",
+      "entry_time": "2026-01-19 18:37:12",
+      "exit_time": "2026-01-21 15:14:19",
+      "hour_gmt": 16,
+      "day_of_week": "Monday",
+      "session": "ny",
+      "strategy": "unknown",
+      "profit": 5.17,
+      "duration_minutes": 2677.116666666667,
+      "is_win": true
     }
   ],
-  "last_updated": "2026-01-20 00:23:58"
+  "last_updated": "2026-01-21 15:16:17"
 }

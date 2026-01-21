@@ -16,7 +16,7 @@ class TradeResult:
         self.message = message
 
 class BacktestTrade:
-    def __init__(self, symbol: str, entry_price: float, stop_loss: float, take_profit: float, lot_size: float, direction: str, open_time: datetime, pip_value: float, risk_amount: float):
+    def __init__(self, symbol: str, entry_price: float, stop_loss: float, take_profit: float, lot_size: float, direction: str, open_time: datetime, pip_value: float):
         self.symbol = symbol
         self.entry_price = entry_price
         self.stop_loss = stop_loss
@@ -27,7 +27,6 @@ class BacktestTrade:
         self.close_time = None
         self.close_price = None
         self.pip_value = pip_value
-        self.risk_amount = risk_amount
         self.pnl = 0
         self.status = 'open'
 
@@ -249,9 +248,6 @@ class BacktestEngine:
                 
                 row = df_ltf_past.iloc[-1]
                 
-                # ✅ CORRECTION: Vérifier les clôtures pour CE symbole AVEC le prix de CE symbole
-                self._check_trade_closes(symbol, row['close'], current_date)
-                
                 # On passe l'analyse
                 analysis = self.strategy.analyze(df_ltf_past, df_htf_past, symbol=symbol)
                 if analysis is None:
@@ -261,10 +257,6 @@ class BacktestEngine:
                 if signal is None or signal.signal_type == SignalType.NO_SIGNAL:
                     continue
                 
-                # 🔧 CORRECTION CRITIQUE: Calculer la vraie taille de lot avec RiskManager
-                from strategy.risk_management import RiskManager
-                risk_manager = RiskManager(self.strategy.config)
-                
                 # Open trade with spread
                 spread_price = self._get_spread_price(symbol)
                 entry_price = signal.entry_price
@@ -273,111 +265,49 @@ class BacktestEngine:
                 else:
                     entry_price -= spread_price
                 
-                # Calculer la position size réelle
-                pos_size = risk_manager.calculate_position_size(
-                    account_balance=self.current_capital,
-                    entry_price=entry_price,
-                    stop_loss=signal.stop_loss,
-                    symbol=symbol
-                )
-                
-                # ✅ APPLIQUER le lot_multiplier comme un MULTIPLICATEUR (pas comme une taille absolue!)
-                final_lot_size = pos_size.lot_size * signal.lot_multiplier
-                
-                # 🔍 DEBUG SIZING: AFFICHER POURQUOI C'EST PETIT
-                if i % 5 == 0: # Echantillon
-                    print(f"\n[DEBUG] {symbol} | Risk: ${pos_size.risk_amount:.2f} | SL: {pos_size.stop_loss_pips:.1f} pips")
-                    print(f"      Base Lot: {pos_size.lot_size:.4f} | Signal Mult: {signal.lot_multiplier:.2f} | FINAL LOT: {final_lot_size:.4f}")
-                
-                logger.info(f"📊 Position calc: Base={pos_size.lot_size:.4f}, Multiplier={signal.lot_multiplier:.2f}, Final={final_lot_size:.4f}")
-                
-                trade = self._open_trade(symbol, entry_price, signal.stop_loss, signal.take_profit, final_lot_size, signal.signal_type.value.upper(), pos_size.risk_amount)
+                trade = self._open_trade(symbol, entry_price, signal.stop_loss, signal.take_profit, signal.lot_multiplier, signal.signal_type.value.upper())
                 if trade:
                     self.results['total_trades'] += 1
             
-            # Check for closes loop deleted (moved inside per-symbol loop)
-            # if row is not None:
-            #     self._check_trade_closes(row['close'], current_date)
+            # Check for closes using the last processed row's close
+            if row is not None:
+                self._check_trade_closes(row['close'], current_date)
             
             # Log progress every 50 candles (optimisé pour visualisation)
             if i % 50 == 0:
                 pct = i / progress_total * 100
                 print(f"\rProgression: {pct:.1f}% ({i}/{progress_total} candles) - {current_date.strftime('%Y-%m-%d %H:%M')}", end="", flush=True)
-        
-        # 🧹 CLEANUP: Clôturer tous les trades restants à la fin du backtest
-        print(f"\n\n🔄 Clôture de {len(self.open_trades)} trades restants...")
-        for trade in list(self.open_trades):
-            if trade.symbol in data:
-                df_final = data[trade.symbol]['ltf']
-                if not df_final.empty:
-                    last_price = df_final.iloc[-1]['close']
-                    last_time = df_final.index[-1]
-                    
-                    trade.close(last_price, last_time)
-                    self.closed_trades.append(trade)
-                    self.open_trades.remove(trade)
-                    self.current_capital += trade.risk_amount + trade.pnl
-        
         self._finalize_results()
         return self.results
 
-    def _open_trade(self, symbol, entry_price, stop_loss, take_profit, lot_size, direction, explicit_risk_amount=None):
+    def _open_trade(self, symbol, entry_price, stop_loss, take_profit, lot_size, direction):
         pip_value = self._get_pip_value(symbol, entry_price)
-        
-        # 🔍 LOGGING CRITIQUE POUR DEBUG
-        logger.warning(f"\n{'='*60}\n🚨 OUVERTURE TRADE - DETAILS COMPLETS\n{'='*60}")
-        logger.warning(f"Symbole:      {symbol}")
-        logger.warning(f"Direction:    {direction}")
-        logger.warning(f"Entry Price:  {entry_price:.5f}")
-        logger.warning(f"Stop Loss:    {stop_loss:.5f}")
-        logger.warning(f"Take Profit:  {take_profit:.5f}")
-        logger.warning(f"Lot Size:     {lot_size:.4f} lots")
-        logger.warning(f"Pip Value:    {pip_value:.2f} (Backtester)")
-        
         if direction == 'BUY':
             risk = entry_price - stop_loss
         else:
             risk = stop_loss - entry_price
-        
-        if explicit_risk_amount is not None:
-            risk_amount = explicit_risk_amount
-        else:
-            risk_amount = risk * pip_value * lot_size
-        
-        logger.warning(f"Risk (price): {risk:.5f}")
-        logger.warning(f"Risk Amount:  ${risk_amount:,.2f}")
-        logger.warning(f"Capital:      ${self.current_capital:,.2f}")
-        logger.warning(f"{'='*60}\n")
-        
+        risk_amount = risk * pip_value * lot_size
         if self.current_capital < risk_amount:
-            logger.error(f"❌ Trade rejected: Insufficient capital (need ${risk_amount:,.2f}, have ${self.current_capital:,.2f})")
             return None
-        
-        trade = BacktestTrade(symbol, entry_price, stop_loss, take_profit, lot_size, direction, self.current_date, pip_value, risk_amount)
+        trade = BacktestTrade(symbol, entry_price, stop_loss, take_profit, lot_size, direction, self.current_date, pip_value)
         self.open_trades.append(trade)
         self.current_capital -= risk_amount
         return trade
 
-    def _check_trade_closes(self, symbol, current_price, current_time):
-        """Check closes ONLY for the specific symbol"""
-        # Filter trades for this symbol first
-        symbol_trades = [t for t in self.open_trades if t.symbol == symbol]
-        
-        for trade in symbol_trades:
+    def _check_trade_closes(self, current_price, current_time):
+        for trade in self.open_trades[:]:
             if trade.direction == 'BUY':
                 if current_price >= trade.take_profit or current_price <= trade.stop_loss:
                     trade.close(current_price, current_time)
                     self.closed_trades.append(trade)
                     self.open_trades.remove(trade)
-                    # ✅ RESTITUER LA MARGE + PNL
-                    self.current_capital += trade.risk_amount + trade.pnl
+                    self.current_capital += trade.pnl
             else:
                 if current_price <= trade.take_profit or current_price >= trade.stop_loss:
                     trade.close(current_price, current_time)
                     self.closed_trades.append(trade)
                     self.open_trades.remove(trade)
-                    # ✅ RESTITUER LA MARGE + PNL
-                    self.current_capital += trade.risk_amount + trade.pnl
+                    self.current_capital += trade.pnl
 
     def _finalize_results(self):
         """Calculate all professional trading metrics"""
@@ -465,8 +395,6 @@ class BacktestEngine:
             return 1.0      # 1 lot ETH = 1 Coin
         elif 'XAU' in symbol_upper:
             return 100.0    # 1 lot Gold = 100 oz ($1 move = $100 profit)
-        elif any(idx in symbol_upper for idx in ['US30', 'NAS100', 'SPX', 'GER30', 'DE30', 'DE40']):
-            return 1.0      # Indices (Standard CFD): 1 lot = 1 Index ($1 move = $1 profit)
         elif 'JPY' in symbol_upper:
             return 1000.0   # Ajustement pour paires JPY (Standard 100k contract / 100)
         else:

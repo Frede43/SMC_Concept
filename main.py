@@ -393,7 +393,9 @@ class SMCTradingBot:
                     self._handle_closed_trades(closed_tickets)
                 
                 # Attendre avant le prochain cycle
-                time.sleep(1)  # Check toutes les secondes (plus réactif)
+                # ✅ OPTIMISATION: 5 min pour H1 au lieu de 1s (économise 99.7% de CPU/logs)
+                # Le marché H1 ne change pas significativement en 1 seconde
+                time.sleep(300)  # 5 minutes - Optimal pour timeframe H1
                 
             except Exception as e:
                 # ✅ FIX: Meilleur logging avec traceback pour diagnostic
@@ -667,7 +669,6 @@ class SMCTradingBot:
             # 🆕 Filtre Lunch Break: Évite les trades pendant faible liquidité (12-13h GMT)
             lunch_config = self.config.get('risk', {}).get('lunch_break_filter', {})
             if lunch_config.get('enabled', False) and lunch_config.get('block_new_trades', True):
-                # from datetime import datetime  <-- SUPPRIMÉ pour éviter conflit Scope
                 current_hour = datetime.now().hour
                 # Convertir en GMT (approximation: heure locale - 2 pour l'Afrique du Sud)
                 timezone_offset = 2  # Ajuster selon votre fuseau horaire
@@ -758,34 +759,34 @@ class SMCTradingBot:
                 current_tick_price=price_info  # ✅ Passe le tick réel (Bid/Ask)
             )
 
-            # --- STRATÉGIE SPÉCIALISÉE USD/JPY (DÉSACTIVÉE - CAUSE CONFLITS BIAS) ---
-            # if symbol == "USDJPYm":
-            #      try:
-            #         logger.info("🇯🇵 Checking Specialized USD/JPY Setup...")
-            #         # Créer instance
-            #         usdjpy_strat = UsdJpySMCStrategy(htf_df=df_htf, mtf_df=df_mtf, ltf_df=df_ltf)
-            #         special_signal = usdjpy_strat.analyze()
-            #         
-            #         if special_signal and special_signal.signal_type == UsdJpySignalType.STRONG_SELL:
-            #             logger.info(f"🔥🔥🔥 SIGNAL EXPERT USD/JPY DÉTECTÉ: {special_signal.signal_type} 🔥🔥🔥")
-            #             
-            #             # Créer un signal prioritaire
-            #             expert_signal = TradeSignal(
-            #                 signal_type=SignalType.SELL,
-            #                 entry_price=special_signal.entry_price,
-            #                 stop_loss=special_signal.stop_loss,
-            #                 take_profit=special_signal.take_profit_1,
-            #                 confidence=special_signal.confidence,
-            #                 reasons=special_signal.reasons,
-            #                 timestamp=pd.Timestamp.now(),
-            #                 is_secondary=False,
-            #                 lot_multiplier=1.5 # Boost de taille pour setup expert
-            #             )
-            #             # Override le signal standard si présent
-            #             signal = expert_signal
-            #             
-            #      except Exception as e:
-            #         logger.error(f"Erreur stratégie USD/JPY: {e}")
+            # --- STRATÉGIE SPÉCIALISÉE USD/JPY ---
+            if symbol == "USDJPYm":
+                 try:
+                    logger.info("🇯🇵 Checking Specialized USD/JPY Setup...")
+                    # Créer instance
+                    usdjpy_strat = UsdJpySMCStrategy(htf_df=df_htf, mtf_df=df_mtf, ltf_df=df_ltf)
+                    special_signal = usdjpy_strat.analyze()
+                    
+                    if special_signal and special_signal.signal_type == UsdJpySignalType.STRONG_SELL:
+                        logger.info(f"🔥🔥🔥 SIGNAL EXPERT USD/JPY DÉTECTÉ: {special_signal.signal_type} 🔥🔥🔥")
+                        
+                        # Créer un signal prioritaire
+                        expert_signal = TradeSignal(
+                            signal_type=SignalType.SELL,
+                            entry_price=special_signal.entry_price,
+                            stop_loss=special_signal.stop_loss,
+                            take_profit=special_signal.take_profit_1,
+                            confidence=special_signal.confidence,
+                            reasons=special_signal.reasons,
+                            timestamp=pd.Timestamp.now(),
+                            is_secondary=False,
+                            lot_multiplier=1.5 # Boost de taille pour setup expert
+                        )
+                        # Override le signal standard si présent
+                        signal = expert_signal
+                        
+                 except Exception as e:
+                    logger.error(f"Erreur stratégie USD/JPY: {e}")
             
             if signal is None:
                 logger.info(f"   Pas de signal - Conditions non remplies")

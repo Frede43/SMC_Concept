@@ -117,74 +117,52 @@ class LiquidityDetector:
         price_col = 'high' if is_high else 'low'
         liquidity_type = LiquidityType.BUY_SIDE if is_high else LiquidityType.SELL_SIDE
         
-        # ⚡ OPTIMISATION: Conversion en Numpy array pour éviter 20,000 appels à iloc
-        prices = df[price_col].values
-        n = len(prices)
-        
-        for i in range(self.lookback, n):
-            current_price = prices[i]
-            # Fenêtre glissante sur numpy array (Ultra rapide)
-            window = prices[i - self.lookback : i]
+        levels = []
+        for i in range(self.lookback, len(df)):
+            window = df.iloc[i - self.lookback:i]
+            current_price = df.iloc[i][price_col]
             
-            # Vectorized numpy comparison
-            # Compter combien de prix dans la fenêtre sont proches du prix actuel
-            similar_mask = np.abs(window - current_price) <= tolerance
-            similar_count = np.sum(similar_mask)
+            # Chercher des niveaux similaires
+            similar_count = 0
+            for j in range(len(window)):
+                if abs(window.iloc[j][price_col] - current_price) <= tolerance:
+                    similar_count += 1
             
             if similar_count >= 2:
                 zone = LiquidityZone(
                     type=liquidity_type,
                     status=LiquidityStatus.UNTOUCHED,
-                    level=float(current_price),
+                    level=current_price,
                     index=i,
-                    timestamp=df.index[i],
-                    touch_count=int(similar_count),
+                    timestamp=df.index[i] if isinstance(df.index, pd.DatetimeIndex) else pd.Timestamp.now(),
+                    touch_count=similar_count,
                     is_equal_level=True
                 )
                 
-                # Éviter les doublons (avec tolérance)
-                is_duplicate = False
-                for z in self.liquidity_zones:
-                    if z.type == liquidity_type and abs(z.level - zone.level) <= tolerance:
-                        is_duplicate = True
-                        break
-                
+                # Éviter les doublons
+                is_duplicate = any(abs(z.level - zone.level) <= tolerance for z in self.liquidity_zones)
                 if not is_duplicate:
                     self.liquidity_zones.append(zone)
     
     def _detect_sweeps(self, df: pd.DataFrame) -> None:
-        # Optimisation: Convertir colonnes en numpy une seule fois
-        highs = df['high'].values
-        lows = df['low'].values
-        closes = df['close'].values
-        n = len(df)
-        
         for zone in self.liquidity_zones:
             if zone.status != LiquidityStatus.UNTOUCHED:
                 continue
             
-            # Commencer la recherche APRES la création de la zone
-            start_idx = zone.index + 1
-            if start_idx >= n:
-                continue
-                
-            # Slicing numpy à partir de start_idx
-            # On cherche le PREMIER événement de sweep, donc on garde la boucle mais sur arrays
-            
-            for i in range(start_idx, n):
-                h, l, c = highs[i], lows[i], closes[i]
+            for i in range(zone.index + 1, len(df)):
+                bar = df.iloc[i]
                 
                 if zone.type == LiquidityType.BUY_SIDE:
-                    # Sweep si le prix dépasse le niveau (mèche) puis clôture en dessous
-                    if h > zone.level and c < zone.level:
+                    # Sweep si le prix dépasse le niveau puis clôture en dessous
+                    if bar['high'] > zone.level and bar['close'] < zone.level:
                         sweep = LiquiditySweep(
                             type=zone.type,
                             liquidity_level=zone.level,
                             sweep_index=i,
-                            sweep_high=float(h),
-                            sweep_low=float(l),
-                            close_price=float(c),
-                            timestamp=df.index[i],
+                            sweep_high=bar['high'],
+                            sweep_low=bar['low'],
+                            close_price=bar['close'],
+                            timestamp=df.index[i] if isinstance(df.index, pd.DatetimeIndex) else pd.Timestamp.now(),
                             is_confirmed=True
                         )
                         self.sweeps.append(sweep)
@@ -193,15 +171,15 @@ class LiquidityDetector:
                         break
                         
                 else:  # SELL_SIDE
-                    if l < zone.level and c > zone.level:
+                    if bar['low'] < zone.level and bar['close'] > zone.level:
                         sweep = LiquiditySweep(
                             type=zone.type,
                             liquidity_level=zone.level,
                             sweep_index=i,
-                            sweep_high=float(h),
-                            sweep_low=float(l),
-                            close_price=float(c),
-                            timestamp=df.index[i],
+                            sweep_high=bar['high'],
+                            sweep_low=bar['low'],
+                            close_price=bar['close'],
+                            timestamp=df.index[i] if isinstance(df.index, pd.DatetimeIndex) else pd.Timestamp.now(),
                             is_confirmed=True
                         )
                         self.sweeps.append(sweep)

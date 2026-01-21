@@ -1,15 +1,19 @@
-from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
 from enum import Enum
+from dataclasses import dataclass, field
+from typing import List, Optional, Dict, Any, Union
+import logging
 import pandas as pd
-from loguru import logger
 
+logger = logging.getLogger(__name__)
 
 class SignalType(Enum):
-    BUY = "buy"
-    SELL = "sell"
-    NO_SIGNAL = "no_signal"
-
+    BUY = "BUY"
+    SELL = "SELL"
+    NEUTRAL = "NEUTRAL"
+    STRONG_BUY = "STRONG_BUY"
+    STRONG_SELL = "STRONG_SELL"
+    WAIT = "WAIT"
+    NO_SIGNAL = "NO_SIGNAL"
 
 @dataclass
 class TradeSignal:
@@ -19,44 +23,33 @@ class TradeSignal:
     take_profit: float
     confidence: float
     reasons: List[str]
-    timestamp: pd.Timestamp
-    is_secondary: bool = False  # True si signal iFVG (secondaire)
-    lot_multiplier: float = 1.0  # Multiplicateur de lot (0.5 pour signaux secondaires)
-
+    timestamp: Optional[Any] = None
+    is_secondary: bool = False
+    lot_multiplier: float = 1.0
+    symbol: Optional[str] = None
+    
+    @property
     def risk_reward(self) -> float:
-        """Calcule le ratio Risque/Rendement"""
-        if self.stop_loss == self.entry_price:
+        risk = abs(self.entry_price - self.stop_loss)
+        if risk == 0:
             return 0.0
-        return abs(self.take_profit - self.entry_price) / abs(self.entry_price - self.stop_loss)
-
-
+        return abs(self.take_profit - self.entry_price) / risk
+    
 @dataclass
 class TradeDecision:
-    """
-    Bulletin de décision pour le logging et le dashboard
-    Trace pourquoi un trade a été pris ou rejeté AVEC les détails.
-    """
-
     symbol: str
     timestamp: str
-    signal_type: str
-    final_score: float
+    signal_type: str = "NONE"
+    final_score: float = 0.0
     metadata: Dict[str, Any] = field(default_factory=dict)
-    components: Dict[str, float] = field(default_factory=dict)  # Score par composant
-    is_taken: bool = False
-    rejection_reason: str = ""
-
+    components: Dict[str, Any] = field(default_factory=dict)
+    rejection_reason: Optional[str] = None
+    should_trade: bool = False
+    signal: Optional[TradeSignal] = None
+    
     def log(self):
-        """Log la décision de manière structurée"""
-        icon = "✅" if self.is_taken else "❌"
-        status = "EXECUTED" if self.is_taken else "REJECTED"
-
-        msg = f"{icon} DECISION [{self.symbol}]: {status} | Score: {self.final_score:.1f}/100"
-        if not self.is_taken:
-            msg += f" | Reason: {self.rejection_reason}"
-
-        logger.info(msg)
-
-        # Log détaillé en DEBUG
-        if self.is_taken or self.final_score > 40:
-            logger.debug(f"   Details: {self.metadata}")
+        """Logs the decision details."""
+        if self.rejection_reason:
+            logger.info(f"🚫 Trade Rejected for {self.symbol}: {self.rejection_reason}")
+        else:
+            logger.info(f"✅ Trade Accepted for {self.symbol}: {self.signal_type} (Score: {self.final_score})")

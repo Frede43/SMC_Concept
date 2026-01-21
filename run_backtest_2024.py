@@ -8,19 +8,6 @@ Usage: python run_backtest_2024.py
 """
 
 import sys
-import os
-
-# ✅ FIX CRASH EMOJI WINDOWS: Forcer l'encodage UTF-8 pour la console
-if sys.platform == 'win32':
-    try:
-        sys.stdout.reconfigure(encoding='utf-8')
-        sys.stderr.reconfigure(encoding='utf-8')
-    except:
-        # Fallback si reconfigure échoue
-        import io
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
-
 from pathlib import Path
 from datetime import datetime
 import pandas as pd

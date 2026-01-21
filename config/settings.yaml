@@ -70,11 +70,11 @@ symbols:
   #     use_atr_sl: true
   #     max_slippage_pips: 3000
 
-  # - name: "XAUUSDm"
-  #   trade_weekend: false
-  #   is_crypto: false
-  #   risk_settings:
-  #     max_slippage_pips: 30
+  - name: "XAUUSDm"
+    trade_weekend: false
+    is_crypto: false
+    risk_settings:
+      max_slippage_pips: 30
   
   # - name: "US30m"
   #   trade_weekend: false
@@ -136,23 +136,23 @@ risk:
     max_losing_streak: 2    # ✅ RÉDUIT à 2 (était 3) - Plus strict sur petit compte
 
 # --- SMC Strategy Parameters ---
-# ✅ ÉQUILIBRÉ - Qualité + Quantité
+# ✅ OPTIMISÉ - Qualité + Quantité (LuxAlgo Recommendations)
 smc:
-  min_confidence: 0.70    # ⚖️ ASSOUPLIR à 0.70 (était 0.75) - Standard industrie
-  trend_filter: "strict"  # ✅ Garder strict - Trade avec tendance seulement
+  min_confidence: 0.65    # ✅ ASSOUPLIR à 0.65 (était 0.70) - Équilibre optimal
+  trend_filter: "balanced"  # ✅ CHANGÉ: balanced au lieu de strict - Plus flexible
   
-  # 🆕 TREND STRENGTH FILTER (ADX)
+  # 🆕 TREND STRENGTH FILTER (ADX) - OPTIMISÉ
   trend_strength:
     enabled: true
-    min_adx: 20.0         # ⚖️ RÉDUIT à 20 (était 25) - Accepter tendances modérées
+    min_adx: 18.0         # ✅ RÉDUIT à 18 (était 20) - Accepter tendances faibles/modérées
     adx_period: 14
-    strict_mode: false     # ⚖️ DÉSACTIVER strict (était true) - Mode recommandation
+    strict_mode: false     # ⚖️ DÉSACTIVER strict - Mode recommandation seulement
   
   structure:
     swing_length: 5
     bos_confirmation: "body"
     choch_confirmation: "wick"
-    require_htf_alignment: false  # ⚖️ DÉSACTIVER (était true) - Trop restrictif
+    require_htf_alignment: false  # ✅ DÉSACTIVER - Géré par le nouveau scoring pondéré
     
   order_blocks:
     mitigation_type: "wick"
