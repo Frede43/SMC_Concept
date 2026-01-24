@@ -34,7 +34,7 @@ mt5:
   timeout: 60000
 
 # --- Trading Universe ---
-# ✅ CONFIGURATION ÉQUILIBRÉE - 3 Symboles Forex Majeurs
+# ✅ CONFIGURATION FOREX UNIQUEMENT - 3 Paires Majeures
 symbols:
   - name: "EURUSDm"
     trade_weekend: false
@@ -52,53 +52,12 @@ symbols:
       block_mtf_conflict: true
       mtf_conflict_symbols: ["EURUSD", "GBPUSD"]
   
-  - name: "USDJPYm"    # ✅ RÉACTIVÉ
+  - name: "USDJPYm"
     trade_weekend: false
     is_crypto: false
     risk_settings:
       allow_counter_trend: true
       block_mtf_conflict: true
-  
-  # ❌ DÉSACTIVÉ pour compte 300$ (spread trop élevé relatif au capital)
-  # Réactiver quand capital > 1000$
-  # - name: "BTCUSDm"
-  #   trade_weekend: true
-  #   is_crypto: true
-  #   max_spread: 3500
-  #   risk_settings:
-  #     sl_multiplier: 1.5
-  #     use_atr_sl: true
-  #     max_slippage_pips: 3000
-
-  - name: "XAUUSDm"
-    trade_weekend: false
-    is_crypto: false
-    risk_settings:
-      max_slippage_pips: 30
-  
-  # - name: "US30m"
-  #   trade_weekend: false
-  #   is_crypto: false
-  #   strategies:
-  #     silver_bullet: true
-  #     amd: true
-  #     smt: true
-  #   risk_settings:
-  #     allow_counter_trend: false
-  #     max_slippage_pips: 20
-  #     max_spread: 100
-  
-  # - name: "USTECm"
-  #   trade_weekend: false
-  #   is_crypto: false
-  #   strategies:
-  #     silver_bullet: true
-  #     amd: true
-  #     smt: true
-  #   risk_settings:
-  #     allow_counter_trend: false
-  #     max_slippage_pips: 20
-  #     max_spread: 300
 
 timeframes:
   ltf: "H1"   # RETOUR H1 (Plus stable)
@@ -209,12 +168,7 @@ smc:
   smt:
     enabled: true
     pairs:
-      US30m:
-        corr_symbol: "USTECm"
-        type: "positive"  # Si US30 monte, USTEC doit monter. Si divergence = Signal
-      USTECm:
-        corr_symbol: "US30m"
-        type: "positive"
+      # ✅ Configuration SMT pour paires Forex uniquement
       EURUSDm:
         corr_symbol: "GBPUSDm"
         type: "positive"  # DXY correlation inverse (classique)
