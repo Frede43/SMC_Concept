@@ -36,6 +36,8 @@ class OrderBlock:
     impulse_strength: float = 0.0
     tests_count: int = 0
     volume: float = 0.0
+    volume_confirmed: bool = False  # 🆕 Nouveau champ: Volume > Moyenne
+    relative_volume: float = 1.0    # 🆕 Nouveau champ: Ratio Volume/Moyenne
     
     @property
     def midpoint(self) -> float:
@@ -144,13 +146,35 @@ class OrderBlockDetector:
             return None
         if current['close'] < prev['high']:
             return None
+            
+        # 🆕 Volume Analysis
+        vol_confirmed = False
+        rvol = 1.0
+        
+        # Check volume si disponible
+        vol_col = 'tick_volume' if 'tick_volume' in df.columns else 'volume' if 'volume' in df.columns else None
+        
+        if vol_col:
+            current_vol = prev.get(vol_col, 0)
+            # Calcul moyenne mobile sur 20 périodes avant l'OB
+            start_idx = max(0, idx - 21)
+            end_idx = idx - 1
+            if end_idx > start_idx:
+                avg_vol = df[vol_col].iloc[start_idx:end_idx].mean()
+                if avg_vol > 0:
+                    rvol = current_vol / avg_vol
+                    # Un OB valide devrait avoir un volume > moyenne (institutionnel)
+                    if rvol > 1.2: 
+                        vol_confirmed = True
         
         return OrderBlock(
             type=OBType.BULLISH, status=OBStatus.FRESH, index=idx - 1,
             high=prev['high'], low=prev['low'], open_price=prev['open'],
             close_price=prev['close'], impulse_strength=current_body / prev_body,
             timestamp=df.index[idx - 1] if isinstance(df.index, pd.DatetimeIndex) else pd.Timestamp.now(),
-            volume=prev.get('volume', 0)
+            volume=prev.get(vol_col, 0) if vol_col else 0,
+            volume_confirmed=vol_confirmed,
+            relative_volume=rvol
         )
     
     def _check_bearish_ob(self, df: pd.DataFrame, idx: int) -> Optional[OrderBlock]:
@@ -169,13 +193,35 @@ class OrderBlockDetector:
             return None
         if current['close'] > prev['low']:
             return None
+            
+        # 🆕 Volume Analysis
+        vol_confirmed = False
+        rvol = 1.0
+        
+        # Check volume si disponible
+        vol_col = 'tick_volume' if 'tick_volume' in df.columns else 'volume' if 'volume' in df.columns else None
+        
+        if vol_col:
+            current_vol = prev.get(vol_col, 0)
+            # Calcul moyenne mobile sur 20 périodes avant l'OB
+            start_idx = max(0, idx - 21)
+            end_idx = idx - 1
+            if end_idx > start_idx:
+                avg_vol = df[vol_col].iloc[start_idx:end_idx].mean()
+                if avg_vol > 0:
+                    rvol = current_vol / avg_vol
+                    # Un OB valide devrait avoir un volume > moyenne
+                    if rvol > 1.2:
+                        vol_confirmed = True
         
         return OrderBlock(
             type=OBType.BEARISH, status=OBStatus.FRESH, index=idx - 1,
             high=prev['high'], low=prev['low'], open_price=prev['open'],
             close_price=prev['close'], impulse_strength=current_body / prev_body,
             timestamp=df.index[idx - 1] if isinstance(df.index, pd.DatetimeIndex) else pd.Timestamp.now(),
-            volume=prev.get('volume', 0)
+            volume=prev.get(vol_col, 0) if vol_col else 0,
+            volume_confirmed=vol_confirmed,
+            relative_volume=rvol
         )
     
     def _update_ob_status(self, df: pd.DataFrame) -> None:

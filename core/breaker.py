@@ -31,6 +31,7 @@ class BreakerBlock:
     original_ob_index: int
     timestamp: pd.Timestamp
     tests_count: int = 0
+    has_fvg_confluence: bool = False  # 🆕 Setup A+: Breaker aligné avec un FVG
     
     @property
     def midpoint(self) -> float:
@@ -126,6 +127,34 @@ class BreakerBlockDetector:
                     if bar['high'] >= bb.low and bar['high'] <= bb.high:
                         bb.status = BreakerStatus.TESTED
                         bb.tests_count += 1
+                        
+    def check_fvg_confluence(self, fvgs: List) -> None:
+        """
+        Vérifie la confluence avec les FVGs.
+        Un Breaker qui s'aligne avec un FVG est un setup très fort.
+        """
+        if not fvgs:
+            return
+            
+        for bb in self.breaker_blocks:
+            if not bb.is_valid():
+                continue
+                
+            for fvg in fvgs:
+                # Filtrer par direction (Bullish Breaker avec Bullish FVG)
+                if fvg.type.value != bb.type.value:
+                    continue
+                
+                # Vérifier chevauchement ou proximité
+                overlap = False
+                
+                # Chevauchement simple des zones
+                if (bb.high >= fvg.low) and (bb.low <= fvg.high):
+                    overlap = True
+                
+                if overlap:
+                    bb.has_fvg_confluence = True
+                    break
     
     def get_nearest_breaker(self, price: float, 
                            breaker_type: Optional[BreakerType] = None) -> Optional[BreakerBlock]:
@@ -138,7 +167,9 @@ class BreakerBlockDetector:
         def distance(bb):
             if price >= bb.low and price <= bb.high:
                 return 0
-            return min(abs(bb.low - price), abs(bb.high - price))
+            # Bonus de distance si confluence FVG (on le considère "plus proche" en priorité)
+            dist = min(abs(bb.low - price), abs(bb.high - price))
+            return dist * 0.8 if bb.has_fvg_confluence else dist
         
         return min(valid, key=distance)
     

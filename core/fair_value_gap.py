@@ -32,6 +32,7 @@ class FairValueGap:
     timestamp: pd.Timestamp
     fill_percentage: float = 0.0
     is_inverse: bool = False
+    is_ob_confluence: bool = False  # 🆕 Setup A+: FVG à l'intérieur/proche d'un OB
     
     @property
     def midpoint(self) -> float:
@@ -41,8 +42,16 @@ class FairValueGap:
     def size(self) -> float:
         return self.high - self.low
     
+    @property
+    def is_a_plus_setup(self) -> bool:
+        return self.is_ob_confluence
+        
     def is_valid(self) -> bool:
         return self.status != FVGStatus.FILLED
+
+# ... [La classe FVGDetector reste la même jusqu'à la fin] ...
+
+
 
 
 class FVGDetector:
@@ -346,13 +355,58 @@ class FVGDetector:
         
         return "NEUTRAL", 0.0, "iFVG type inconnu"
     
+    def check_ob_confluence(self, order_blocks: List) -> None:
+        """
+        Vérifie la confluence entre les FVGs détectés et une liste d'Order Blocks.
+        Un FVG situé près/dans un OB est un signal très fort.
+        """
+        if not order_blocks:
+            return
+            
+        for fvg in self.fvgs:
+            if not fvg.is_valid():
+                continue
+                
+            # Pour chaque OB, vérifier s'il chevauche le FVG
+            for ob in order_blocks:
+                # Filtrer par direction (Bullish FVG doit être avec Bullish OB)
+                if fvg.type.value != ob.type.value:
+                    continue
+                    
+                # Vérification de chevauchement (Overlap)
+                overlap = False
+                if fvg.type == FVGType.BULLISH:
+                    # Le FVG doit être au-dessus ou dans l'OB
+                    # Cas 1: Chevauchement direct
+                    if (fvg.low <= ob.high) and (fvg.high >= ob.low): # Overlap
+                        overlap = True
+                    # Cas 2: Proximité (FVG formé juste après)
+                    elif abs(fvg.low - ob.high) < (ob.height * 0.5): # Très proche
+                        overlap = True
+                
+                else: # Bearish
+                    # Cas 1: Chevauchement
+                    if (fvg.high >= ob.low) and (fvg.low <= ob.high):
+                        overlap = True
+                    # Cas 2: Proximité
+                    elif abs(fvg.high - ob.low) < (ob.height * 0.5):
+                        overlap = True
+                        
+                if overlap:
+                    fvg.is_ob_confluence = True
+                    break
+                    
     def get_all_zones_info(self) -> Dict:
         """Retourne un résumé de toutes les zones FVG/iFVG."""
+        # Calculer combien ont une confluence OB
+        confluence_count = len([f for f in self.fvgs if f.is_ob_confluence])
+        
         return {
             "fvg_count": len(self.fvgs),
             "bullish_fvg": len(self.get_bullish_fvgs()),
             "bearish_fvg": len(self.get_bearish_fvgs()),
             "ifvg_count": len(self.ifvgs),
             "bullish_ifvg": len(self.get_bullish_ifvgs()),
-            "bearish_ifvg": len(self.get_bearish_ifvgs())
+            "bearish_ifvg": len(self.get_bearish_ifvgs()),
+            "a_plus_setups": confluence_count
         }

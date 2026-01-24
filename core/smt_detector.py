@@ -222,3 +222,20 @@ class SMTDetector:
                    all(val <= arr[i+j] for j in range(1, n+1)):
                     swings.append((i, val))
         return swings
+
+    def check_risk_off(self, vix_df: pd.DataFrame) -> Tuple[bool, str]:
+        """
+        Analyse le VIX pour déterminer si le marché est en mode Risk-OFF (Peur).
+        Une divergence SMT + Risk-OFF est un signal très puissant pour shorter les actifs à risque.
+        """
+        if vix_df is None or len(vix_df) < 20:
+            return False, "No VIX data"
+            
+        current_vix = vix_df['close'].iloc[-1]
+        ma_20_vix = vix_df['close'].rolling(window=20).mean().iloc[-1]
+        
+        # Risk-OFF condition: VIX > 20 et en hausse (au-dessus de sa MA20)
+        if current_vix > 20 and current_vix > ma_20_vix:
+            return True, f"Risk-OFF Detected (VIX={current_vix:.2f} > 20)"
+            
+        return False, "Risk-ON"
