@@ -66,13 +66,42 @@ class OrderBlock:
 
 
 class OrderBlockDetector:
-    def __init__(self, max_age_bars: int = 50, min_imbalance_ratio: float = 1.5, 
-                 use_mitigation: bool = True, pip_value: float = 0.0001):
+    # 🆕 DYNAMIC IMBALANCE RATIOS PAR TIMEFRAME
+    # Recommandation Expert: Adapter le ratio selon la volatilité du TF
+    IMBALANCE_RATIOS = {
+        "M1": 1.8,   # Très strict sur scalping
+        "M5": 1.6,
+        "M15": 1.5,  # Standard
+        "M30": 1.4,
+        "H1": 1.3,   # 🆕 Plus flexible sur swing
+        "H4": 1.2,   # 🆕 Encore plus flexible
+        "D1": 1.1    # 🆕 Minimal sur daily
+    }
+    
+    def __init__(self, max_age_bars: int = 50, min_imbalance_ratio: float = None, 
+                 use_mitigation: bool = True, pip_value: float = 0.0001, 
+                 timeframe: str = "M15"):
+        """
+        Args:
+            max_age_bars: Âge maximum d'un OB en nombre de barres
+            min_imbalance_ratio: Ratio minimum (si None, auto-détecté par TF)
+            use_mitigation: Tracker le statut des OBs
+            pip_value: Valeur d'un pip
+            timeframe: 🆕 Timeframe pour adapter le ratio automatiquement
+        """
         self.max_age_bars = max_age_bars
-        self.min_imbalance_ratio = min_imbalance_ratio
         self.use_mitigation = use_mitigation
         self.pip_value = pip_value
+        self.timeframe = timeframe
         self.order_blocks: List[OrderBlock] = []
+        
+        # 🆕 Auto-détection du ratio basé sur le timeframe
+        if min_imbalance_ratio is None:
+            self.min_imbalance_ratio = self.IMBALANCE_RATIOS.get(timeframe, 1.5)
+            logger.info(f"🎯 OB Ratio auto-adapté: {self.min_imbalance_ratio} pour {timeframe}")
+        else:
+            self.min_imbalance_ratio = min_imbalance_ratio
+            logger.info(f"🎯 OB Ratio manuel: {self.min_imbalance_ratio}")
         
     def detect(self, df: pd.DataFrame, structure_breaks: List = None) -> List[OrderBlock]:
         logger.debug(f"Detecting order blocks on {len(df)} bars")

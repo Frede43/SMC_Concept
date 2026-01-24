@@ -1,9 +1,83 @@
 # --- General Settings ---
 general:
   bot_name: "Ultimate SMC Bot"
-  version: "3.2"
+  version: "3.3"  # 🆕 Bumped version
   mode: "live"  # demo, live
   log_level: "DEBUG"
+  trading_mode: "balanced_plus"  # 🆕 conservative, balanced, balanced_plus, aggressive
+
+# --- Trading Modes Configuration ---
+# 🆕 SYSTÈME DE MODES ADAPTATIFS
+trading_modes:
+  conservative:
+    description: "Mode ultra-sélectif - Max qualité, min trades (capital > 10k$)"
+    min_confidence: 0.75
+    max_spread_pips: 3.0
+    max_open_trades: 3
+    risk_per_trade: 0.40
+    filters:
+      all_active: true
+      news_medium_impact: true
+      adr_exhaustion_check: true
+      round_numbers_check: true
+    smc:
+      min_ob_strength: 0.70
+      min_sweep_strength: 0.70
+      min_fvg_size_pips: 5.0
+      swing_length: 5
+      
+  balanced:
+    description: "Mode équilibré - Bon compromis (capital 5-10k$)"
+    min_confidence: 0.65
+    max_spread_pips: 4.0
+    max_open_trades: 5
+    risk_per_trade: 0.50
+    filters:
+      all_active: true
+      news_medium_impact: false
+      adr_exhaustion_check: true
+      round_numbers_check: false
+    smc:
+      min_ob_strength: 0.60
+      min_sweep_strength: 0.60
+      min_fvg_size_pips: 3.0
+      swing_length: 5
+      
+  balanced_plus:
+    description: "🆕 Mode recommandé pour 2-5k$ - Plus d'opportunités"
+    min_confidence: 0.55  # 🚀 Assoupli
+    max_spread_pips: 4.5
+    max_open_trades: 5
+    risk_per_trade: 0.50
+    filters:
+      essential_only: true  # 🆕 Seulement filtres essentiels
+      news_medium_impact: false
+      adr_exhaustion_check: false  # 🚀 Désactivé
+      round_numbers_check: false   # 🚀 Désactivé
+    smc:
+      min_ob_strength: 0.55  # 🚀 Assoupli
+      min_sweep_strength: 0.55  # 🚀 Assoupli
+      min_fvg_size_pips: 2.5  # 🚀 Assoupli
+      swing_length: 5
+      htf_alignment_weight: 0.25  # 🆕 Réduit (était 0.40)
+      
+  aggressive:
+    description: "Mode agressif - Max trades (capital > 5k$, expérimenté)"
+    min_confidence: 0.50
+    max_spread_pips: 5.0
+    max_open_trades: 7
+    risk_per_trade: 0.60
+    filters:
+      essential_only: true
+      news_medium_impact: false
+      adr_exhaustion_check: false
+      round_numbers_check: false
+    smc:
+      min_ob_strength: 0.50
+      min_sweep_strength: 0.50
+      min_fvg_size_pips: 2.0
+      swing_length: 4  # 🚀 Plus réactif
+      htf_alignment_weight: 0.20  # 🆕 Encore moins de poids
 
 # --- Dashboard Web ---
 dashboard:

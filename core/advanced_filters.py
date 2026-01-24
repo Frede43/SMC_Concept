@@ -152,6 +152,12 @@ class AdvancedFilters:
         # Structure settings
         self.allow_counter_trend = self.config.get('allow_counter_trend', False)
         
+        # 🆕 TREND ALIGNMENT WEIGHTS (Adaptatif par mode)
+        # Recommandation Expert: Réduire le poids du HTF pour permettre contra-trend
+        self.htf_alignment_weight = self.config.get('htf_alignment_weight', 0.25)  # 🚀 Réduit de 0.40
+        self.ltf_alignment_weight = self.config.get('ltf_alignment_weight', 0.25)  # 🚀 Réduit de 0.40
+        self.confluence_weight = 1.0 - (self.htf_alignment_weight + self.ltf_alignment_weight)  # Reste
+        
         # Quality thresholds - Ajustés pour plus de trades
         self.quality_thresholds = {
             'A+': 85,  # Réduit de 90
@@ -160,7 +166,9 @@ class AdvancedFilters:
             'C': 40    # Réduit de 50
         }
         
-        logger.info("Advanced Filters initialized")
+        logger.info(f"🎯 Advanced Filters initialized | HTF weight: {self.htf_alignment_weight*100:.0f}%, "
+                   f"LTF weight: {self.ltf_alignment_weight*100:.0f}%, "
+                   f"Confluence: {self.confluence_weight*100:.0f}%")
     
     # =========================================================================
     # 1. ATR DYNAMIC SL/TP
@@ -537,58 +545,69 @@ class AdvancedFilters:
             alignment_score = 0
             is_aligned = False
             
+            # Conversion des poids en points (ex: 0.25 -> 25 points)
+            ltf_max_score = self.ltf_alignment_weight * 100
+            htf_max_score = self.htf_alignment_weight * 100
+            
             if signal_direction == "BUY":
+                # LTF Scoring
                 if ltf_trend == "bullish":
-                    alignment_score += 40
+                    alignment_score += ltf_max_score
                     notes.append("✓ LTF bullish")
                 elif ltf_trend == "ranging":
-                    alignment_score += 30 # Was 20
+                    alignment_score += ltf_max_score * 0.75  # 75% du max score
                     notes.append("~ LTF ranging")
                 else:
                     notes.append("✗ LTF bearish - contre-tendance")
                 
+                # HTF Scoring
                 if htf_trend == "bullish":
-                    alignment_score += 40
+                    alignment_score += htf_max_score
                     notes.append("✓ HTF bullish")
                 elif htf_trend == "ranging":
-                    alignment_score += 30 # Was 20
+                    alignment_score += htf_max_score * 0.75
                     notes.append("~ HTF ranging")
                 elif htf_trend == "unknown":
-                    alignment_score += 20  # Neutre si pas de données
+                    alignment_score += htf_max_score * 0.5   # Neutre
                 else:
                     notes.append("✗ HTF bearish")
             
             elif signal_direction == "SELL":
+                # LTF Scoring
                 if ltf_trend == "bearish":
-                    alignment_score += 40
+                    alignment_score += ltf_max_score
                     notes.append("✓ LTF bearish")
                 elif ltf_trend == "ranging":
-                    alignment_score += 30 # Was 20
+                    alignment_score += ltf_max_score * 0.75
                     notes.append("~ LTF ranging")
                 else:
                     notes.append("✗ LTF bullish - contre-tendance")
                 
+                # HTF Scoring
                 if htf_trend == "bearish":
-                    alignment_score += 40
+                    alignment_score += htf_max_score
                     notes.append("✓ HTF bearish")
                 elif htf_trend == "ranging":
-                    alignment_score += 30 # Was 20
+                    alignment_score += htf_max_score * 0.75
                     notes.append("~ HTF ranging")
                 elif htf_trend == "unknown":
-                    alignment_score += 20
+                    alignment_score += htf_max_score * 0.5
                 else:
                     notes.append("✗ HTF bullish")
             
-            # Bonus pour PRO momentum
+            # Bonus pour PRO momentum et Confluences (Le reste du poids)
             momentum = self._check_momentum(df, signal_direction)
             if momentum > 0:
-                alignment_score += min(20, momentum)
-                notes.append(f"✓ Momentum: +{momentum:.0f}")
+                # Le momentum peut ajouter jusqu'à 30% du poids restant
+                bonus_points = min(self.confluence_weight * 100 * 0.5, momentum)
+                alignment_score += bonus_points
+                notes.append(f"✓ Momentum: +{bonus_points:.1f}")
                 
                 # NOUVEAU: Si momentum extrême (RSI surachat/vente ou Divergence MACD), valider le Reversal
                 if momentum >= 20: 
                     is_aligned = True
-                    alignment_score = max(alignment_score, 60) # Force le passage
+                    # Force le passage avec un score minimum de 65 pour le mode Balanced+
+                    alignment_score = max(alignment_score, 65) 
                     notes.append("✓ Extreme Momentum/Divergence - Reversal Validated")
             
             # LOGIC IMPROVEMENT: Respecter allow_counter_trend MAIS avec validation Momentum
