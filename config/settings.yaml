@@ -40,7 +40,7 @@ symbols:
     trade_weekend: false
     is_crypto: false
     risk_settings:
-      allow_counter_trend: false
+      allow_counter_trend: true
       block_mtf_conflict: true
       mtf_conflict_symbols: ["EURUSD", "GBPUSD"]
       
@@ -48,7 +48,7 @@ symbols:
     trade_weekend: false
     is_crypto: false
     risk_settings:
-      allow_counter_trend: false
+      allow_counter_trend: true
       block_mtf_conflict: true
       mtf_conflict_symbols: ["EURUSD", "GBPUSD"]
   
@@ -56,7 +56,7 @@ symbols:
     trade_weekend: false
     is_crypto: false
     risk_settings:
-      allow_counter_trend: false
+      allow_counter_trend: true
       block_mtf_conflict: true
   
   # ❌ DÉSACTIVÉ pour compte 300$ (spread trop élevé relatif au capital)
@@ -117,7 +117,7 @@ risk:
   min_stacking_time_seconds: 300   # ✅ Augmenté à 5 min (était 2 min)
   
   risk_reward:
-    min: 2.5                # ✅ AUGMENTÉ à 2.5:1 (était 2.0) pour compenser spreads
+    min: 2.0                # ⚡ ADJUSTED: 2.0 pour setups haute probabilité (Score > 80%)
     target: 4.0             # ✅ AUGMENTÉ à 4:1 (était 3.0) pour meilleure rentabilité
     
   management:
@@ -309,5 +309,5 @@ fundamental:
 # --- Advanced Strategy Filters (OVERRIDE) ---
 advanced_filters:
   structure:
-    allow_counter_trend: false  # 🔒 SECURITY BLOCK: Tendance UNIQUEMENT
-    strict_mode: true
+    allow_counter_trend: true  # � DÉBLOQUÉ: Autoriser setups de retournement
+    strict_mode: false         # ⚖️ Moins strict pour plus d'opportunités

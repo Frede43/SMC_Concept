@@ -1785,7 +1785,9 @@ class SMCStrategy:
 
         # 🛡️ FILTRE DE SCORE MINIMAL (PROFIL SENSITIVITY)
         smc_config = symbol_config.get("smc_settings", {})
-        min_conf_score = smc_config.get("min_confidence_score", 70)  # Default 70
+        # Utiliser self.min_confidence (0.65 -> 65) comme fallback
+        global_min = self.min_confidence * 100
+        min_conf_score = smc_config.get("min_confidence_score", global_min)
 
         # =========================================================================
         # 🛡️ FILTRES DE PHILOSOPHIE SMC STRICTE (PROFITABLE OPTIMIZATION)
@@ -1803,18 +1805,18 @@ class SMCStrategy:
             zone_pct = pd_zone.current_percentage if pd_zone else 50.0
 
             # Vérification BUY
-            if bias == "BUY" and zone_pct > 30:  # On veut acheter bas (<30%)
+            if bias == "BUY" and zone_pct > 40:  # On veut acheter bas (<40% au lieu de 30%)
                 logger.info(
-                    f"⛔ [{symbol}] REJET PHILOSOPHIE SMC: Achat Contre-Tendance hors Discount ({zone_pct:.1f}% > 30%)"
+                    f"⛔ [{symbol}] REJET PHILOSOPHIE SMC: Achat Contre-Tendance hors Discount ({zone_pct:.1f}% > 40%)"
                 )
                 decision.rejection_reason = "Counter-Trend Buy not in Deep Discount"
                 decision.log()
                 return None
 
             # Vérification SELL
-            if bias == "SELL" and zone_pct < 70:  # On veut vendre haut (>70%)
+            if bias == "SELL" and zone_pct < 60:  # On veut vendre haut (>60% au lieu de 70%)
                 logger.info(
-                    f"⛔ [{symbol}] REJET PHILOSOPHIE SMC: Vente Contre-Tendance hors Premium ({zone_pct:.1f}% < 70%)"
+                    f"⛔ [{symbol}] REJET PHILOSOPHIE SMC: Vente Contre-Tendance hors Premium ({zone_pct:.1f}% < 60%)"
                 )
                 decision.rejection_reason = "Counter-Trend Sell not in Deep Premium"
                 decision.log()
@@ -2136,6 +2138,15 @@ class SMCStrategy:
         if "htf_df" in dir() and htf_df is not None:
             htf_df_for_filter = htf_df
 
+        # Récupérer le score intermarket pour le Master Scoring
+        intermarket_score = 0.0
+        if (
+            self.fundamental_filter
+            and getattr(self.fundamental_filter, "enabled", False)
+            and hasattr(self.fundamental_filter, "intermarket")
+        ):
+            intermarket_score = self.fundamental_filter.intermarket.get_score(symbol)
+
         enhanced = self.advanced_filters.enhance_signal(
             df=df,
             signal_direction=direction,
@@ -2146,6 +2157,7 @@ class SMCStrategy:
             allow_counter_trend_override=(
                 sweep_confirmed or has_valid_ifvg
             ),  # ✅ FIX: Autoriser contre-tendance pour sweeps ET iFVG haute confiance
+            intermarket_score=intermarket_score
         )
 
         # Vérifier si le signal doit être pris
@@ -2285,23 +2297,23 @@ class SMCStrategy:
         decision.log()
 
         # 🧠 LOGIQUE "ELITE OR NOTHING"
-        # 1. PROMOTION: Si un signal est de haute confiance (>75), on le force en risque PLEIN
+        # 1. PROMOTION: Si un signal est de haute confiance (>70), on le force en risque PLEIN
         # Cela "sauve" les bons setups iFVG qui étaient bridés à 0.5
-        if decision.final_score >= 75.0:
+        if decision.final_score >= 70.0:
             if lot_mult < 1.0:
                 logger.info(
-                    f"🚀 [{symbol}] PROMOTION: Signal upgradé à 1.0 (Score {decision.final_score:.1f} >= 75)"
+                    f"🚀 [{symbol}] PROMOTION: Signal upgradé à 1.0 (Score {decision.final_score:.1f} >= 70)"
                 )
                 lot_mult = 1.0
                 reasons.append("🚀 Promoted to Full Risk (High Score)")
 
         decision.metadata["Final Lot Multiplier"] = f"{lot_mult:.0%}"
 
-        # 2. GUILLOTINE: Si après promotion on est toujours un "demi-trade", on rejette.
-        # Les stats montrent que les trades à 0.5 perdent de l'argent.
-        if lot_mult < 0.9:
+        # 2. GUILLOTINE: Relaxée pour permettre les trades à risque réduit (0.5 ou 0.3)
+        # On ne rejette que si le multiplicateur est vraiment trop bas (< 0.2)
+        if lot_mult < 0.2:
             logger.warning(
-                f"⛔ [{symbol}] REJET QUALITÉ: Multiplier {lot_mult:.2f} < 0.9 (Score: {decision.final_score:.1f})"
+                f"⛔ [{symbol}] REJET QUALITÉ: Multiplier {lot_mult:.2f} < 0.2 (Score: {decision.final_score:.1f})"
             )
             return None
 

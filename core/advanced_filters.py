@@ -115,6 +115,10 @@ class EnhancedSignal:
     # Raisons et Alertes
     reasons: List[str]
     warnings: List[str]
+    
+    # Pro Confluences
+    adr_exhaustion: float = 0.0  # 0-100%
+    is_near_round_number: bool = False
 
 
 class AdvancedFilters:
@@ -377,8 +381,65 @@ class AdvancedFilters:
             return VolumeAnalysis(True, 0.0, "NEUTRAL", "error", str(e))
 
     # =========================================================================
-    # 2. MULTI-CANDLE CONFIRMATION
+    # 1.1 ADR (AVERAGE DAILY RANGE) EXHAUSTION
     # =========================================================================
+    
+    def check_adr_exhaustion(self, df: pd.DataFrame, htf_df: pd.DataFrame = None) -> float:
+        """
+        Calcule si le mouvement du jour a déjà épuisé l'ADR.
+        Retourne le % d'utilisation de l'ADR (0-100+).
+        """
+        try:
+            if htf_df is None or len(htf_df) < 14:
+                return 0.0
+                
+            # ADR 14 jours (HTF est D1)
+            htf_ranges = htf_df['high'] - htf_df['low']
+            adr = htf_ranges.tail(14).mean()
+            
+            # Mouvement du jour actuel
+            # On cherche le début de la journée dans le dataframe LTF (df)
+            today = df.index[-1].date()
+            today_df = df[df.index.date == today]
+            
+            if len(today_df) == 0:
+                return 0.0
+                
+            today_range = today_df['high'].max() - today_df['low'].min()
+            exhaustion_pct = (today_range / adr) * 100 if adr > 0 else 0
+            
+            return exhaustion_pct
+        except Exception as e:
+            logger.error(f"Erreur ADR: {e}")
+            return 0.0
+
+    # =========================================================================
+    # 1.2 INSTITUTIONAL ROUND NUMBERS
+    # =========================================================================
+    
+    def check_round_numbers(self, price: float, symbol: str) -> bool:
+        """
+        Vérifie si le prix est proche d'un 'Big Figure' (000) ou d'un niveau institutionnel (500).
+        """
+        if "JPY" in symbol or "XAU" in symbol or "BTC" in symbol:
+            # Pour JPY/XAU/BTC, on regarde les multiples de 100, 50, 10
+            # Exemple Gold: 2000, 2010, 2050
+            levels = [100.0, 50.0, 10.0]
+            for lvl in levels:
+                if abs(price % lvl) < (lvl * 0.02) or abs(price % lvl) > (lvl * 0.98):
+                    return True
+        else:
+            # Forex Standard: 1.1000, 1.1050, 1.1100
+            # On multiplie par 10000 pour travailler en points/pips
+            price_pips = price * 10000
+            # Niveaux 00 et 50 pips
+            if (price_pips % 100 < 5) or (price_pips % 100 > 95): # .XX00
+                return True
+            if abs(price_pips % 100 - 50) < 5: # .XX50
+                return True
+                
+        return False
+
     
     def check_confirmation(self, df: pd.DataFrame, direction: str, 
                           lookback: int = 5) -> ConfirmationResult:
@@ -957,7 +1018,8 @@ class AdvancedFilters:
                       htf_df: pd.DataFrame = None,
                       analysis: Dict = None,
                       backtest_mode: bool = False,
-                      allow_counter_trend_override: bool = None) -> EnhancedSignal:
+                      allow_counter_trend_override: bool = None,
+                      intermarket_score: float = 0.0) -> EnhancedSignal:
         """
         Améliore un signal avec le Scoring Matriciel SMC.
         """
@@ -1079,14 +1141,72 @@ class AdvancedFilters:
         if not is_spread_safe:
             return self._create_rejected_signal(signal_direction, entry_price, atr_info, spread_reason)
         
-        # TOTAL SCORE - Calculer AVANT l'application du spread multiplier
-        total_score = sum(score_details.values())
+        # 2. Momentum
+        momentum_score = self._check_momentum(df, signal_direction)
+        score_details['Momentum'] = momentum_score
         
-        if spread_mult < 1.0:
-            total_score *= spread_mult # Réduction de score pour spread limite
-            warnings.append(f"⚠️ {spread_reason}")
+        # 3. Confirmation Multi-Bougies
+        confirmation = self.check_confirmation(df, signal_direction)
+        if confirmation.is_confirmed:
+            score_details['Confirmation'] = min(25, confirmation.strength / 4)
+            reasons.append(f"Confirmation {signal_direction} ({confirmation.candles_confirmed} bougies) ✓")
+            
+        # 4. Pro Confluences (NOUVEAU)
+        # 4.1 Round Numbers
+        if self.check_round_numbers(entry_price, symbol):
+            score_details['Round Number'] = 5.0
+            reasons.append("💎 Confluence Niveau Institutionnel (Round Number) ✓")
+            is_near_round = True
         else:
-            reasons.append(f"✓ {spread_reason}")
+            is_near_round = False
+            
+        # 4.2 ADR Exhaustion
+        adr_pct = self.check_adr_exhaustion(df, htf_df)
+        if adr_pct > 85:
+            score_details['ADR Exhaustion'] = -15.0
+            warnings.append(f"⚠️ ADR Épuisé ({adr_pct:.1f}%) - Risque de stagnation")
+        elif adr_pct < 30:
+            score_details['ADR Freshness'] = 5.0 # Pas encore beaucoup bougé, potentiel intact
+            
+        # 5. Volume Analysis
+        vol_analysis = self.check_volume_pressure(df, signal_direction)
+        if vol_analysis.is_safe:
+            score_details['Volume'] = 15.0
+            reasons.append(f"Volume OK ({vol_analysis.pressure_direction} pressure) ✓")
+        else:
+            score_details['Volume'] = -10.0
+            warnings.append(f"⚠️ Volume suspect: {vol_analysis.reason}")
+            
+        # 6. Intermarket Confluence (NOUVEAU)
+        if (signal_direction == "BUY" and intermarket_score > 30) or \
+           (signal_direction == "SELL" and intermarket_score < -30):
+            score_details['Intermarket'] = 10.0
+            reasons.append(f"💎 Intermarket Confluence ({intermarket_score:.1f}) ✓")
+        elif (signal_direction == "BUY" and intermarket_score < -30) or \
+             (signal_direction == "SELL" and intermarket_score > 30):
+            score_details['Intermarket'] = -10.0
+            warnings.append(f"⚠️ Conflit Intermarket ({intermarket_score:.1f})")
+            
+        # Calcul du score final (0-100)
+        final_confidence = sum(score_details.values())
+        final_confidence = max(0, min(100, final_confidence))
+        
+        # Déterminer la qualité finale
+        quality = SignalQuality.REJECT
+        for q, threshold in sorted(self.quality_thresholds.items(), key=lambda x: x[1], reverse=True):
+            if final_confidence >= threshold:
+                quality = SignalQuality[q.replace("+", "_PLUS")]
+                break
+                
+        # Calculer le multiplicateur de position
+        multiplier_map = {
+            SignalQuality.A_PLUS: 1.0,
+            SignalQuality.A: 0.8,
+            SignalQuality.B: 0.5,
+            SignalQuality.C: 0.3,
+            SignalQuality.REJECT: 0.0
+        }
+        position_multiplier = multiplier_map.get(quality, 0.0)
         
         # Calculer SL/TP (ATR dynamique)
         if signal_direction == "BUY":
@@ -1095,32 +1215,18 @@ class AdvancedFilters:
         else:
             stop_loss = entry_price + (atr_info.suggested_sl_pips * pip_value)
             take_profit = entry_price - (atr_info.suggested_tp_pips * pip_value)
-        
-        # Détermination Qualité & Multiplicateur
-        if total_score >= 85:
-            quality = SignalQuality.A_PLUS
-            pos_mult = 1.0
-        elif total_score >= 70:
-            quality = SignalQuality.A
-            pos_mult = 0.8
-        elif total_score >= 55:
-            quality = SignalQuality.B
-            pos_mult = 0.5
-        elif total_score >= 40:
-            quality = SignalQuality.C
-            pos_mult = 0.3
-        else:
-            quality = SignalQuality.REJECT
-            pos_mult = 0.0
-            
-        enhanced = EnhancedSignal(
+
+        logger.info(f"[{symbol}] Master Scoring: {final_confidence} pts | Quality: {quality.value}")
+
+        # Retourner le signal amélioré
+        return EnhancedSignal(
             original_direction=signal_direction,
-            final_direction=signal_direction if quality != SignalQuality.REJECT else "NONE",
+            final_direction=signal_direction if quality != SignalQuality.REJECT else "NEUTRAL",
             quality=quality,
-            confidence=min(100, total_score),
+            confidence=final_confidence,
             score_details=score_details,
             atr_info=atr_info,
-            confirmation=None, # Inclus dans les scores
+            confirmation=confirmation,
             structure=structure,
             time_filter=time_filter,
             volume_analysis=vol_analysis,
@@ -1128,13 +1234,12 @@ class AdvancedFilters:
             entry_price=entry_price,
             stop_loss=stop_loss,
             take_profit=take_profit,
-            position_size_multiplier=pos_mult,
+            position_size_multiplier=position_multiplier,
+            adr_exhaustion=adr_pct,
+            is_near_round_number=is_near_round,
             reasons=reasons,
             warnings=warnings
         )
-        
-        logger.info(f"[{symbol}] Master Scoring: {total_score} pts | Quality: {quality.value}")
-        return enhanced
 
     def _create_rejected_signal(self, dir, price, atr, reason) -> EnhancedSignal:
         return EnhancedSignal(

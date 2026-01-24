@@ -1,17 +1,89 @@
 {
-  "timestamp": "2026-01-21T16:20:20.190737",
-  "source": "ForexFactory + TradingView",
+  "timestamp": "2026-01-24T19:20:54.853225",
+  "source": "TradingView",
   "events": [
     {
-      "time": "2026-01-21T09:00:00",
-      "currency": "GBP",
-      "impact": "medium",
-      "event": "Core Inflation Rate YoY / Inflation Rate MoM",
-      "forecast": "3.3",
-      "previous": "3.2"
+      "time": "2026-01-26T15:30:00",
+      "currency": "USD",
+      "impact": "low",
+      "event": "Chicago Fed National Activity Index",
+      "forecast": "None",
+      "previous": "-0.21"
     },
     {
-      "time": "2026-01-21T09:30:00",
+      "time": "2026-01-26T15:30:00",
+      "currency": "USD",
+      "impact": "low",
+      "event": "Chicago Fed National Activity Index",
+      "forecast": "None",
+      "previous": "None"
+    },
+    {
+      "time": "2026-01-26T15:30:00",
+      "currency": "USD",
+      "impact": "medium",
+      "event": "Durable Goods Orders MoM",
+      "forecast": "0.5",
+      "previous": "-2.2"
+    },
+    {
+      "time": "2026-01-26T15:30:00",
+      "currency": "USD",
+      "impact": "low",
+      "event": "Durable Goods Orders Ex Transp MoM",
+      "forecast": "0.3",
+      "previous": "0.2"
+    },
+    {
+      "time": "2026-01-26T17:30:00",
+      "currency": "USD",
+      "impact": "low",
+      "event": "Dallas Fed Manufacturing Index",
+      "forecast": "None",
+      "previous": "-10.9"
+    },
+    {
+      "time": "2026-01-27T02:30:00",
+      "currency": "AUD",
+      "impact": "medium",
+      "event": "NAB Business Confidence",
+      "forecast": "None",
+      "previous": "1"
+    },
+    {
+      "time": "2026-01-27T07:00:00",
+      "currency": "EUR",
+      "impact": "low",
+      "event": "New Car Registrations YoY",
+      "forecast": "None",
+      "previous": "2.1"
+    },
+    {
+      "time": "2026-01-27T15:15:00",
+      "currency": "USD",
+      "impact": "low",
+      "event": "ADP Employment Change Weekly",
+      "forecast": "None",
+      "previous": "8"
+    },
+    {
+      "time": "2026-01-27T16:00:00",
+      "currency": "USD",
+      "impact": "low",
+      "event": "S&P/Case-Shiller Home Price YoY",
+      "forecast": "1.2",
+      "previous": "1.3"
+    },
+    {
+      "time": "2026-01-27T17:00:00",
+      "currency": "USD",
+      "impact": "low",
+      "event": "CB Consumer Confidence",
+      "forecast": "90.1",
+      "previous": "89.1"
+    },
+    {
+      "time": "2026-01-27T19:00:00",
       "currency": "EUR",
       "impact": "low",
       "event": "ECB President Lagarde Speech",
@@ -19,332 +91,20 @@
       "previous": "None"
     },
     {
-      "time": "2026-01-21T13:00:00",
-      "currency": "GBP",
+      "time": "2026-01-27T23:30:00",
+      "currency": "USD",
       "impact": "low",
-      "event": "CBI Business Optimism Index / CBI Industrial Trends Orders",
+      "event": "API Crude Oil Stock Change",
+      "forecast": "-0.7",
+      "previous": "3.04"
+    },
+    {
+      "time": "2026-01-28T01:50:00",
+      "currency": "JPY",
+      "impact": "low",
+      "event": "BoJ Monetary Policy Meeting Minutes",
       "forecast": "None",
-      "previous": "-31"
-    },
-    {
-      "time": "2026-01-21T14:00:00",
-      "currency": "USD",
-      "impact": "low",
-      "event": "MBA 30-Year Mortgage Rate",
-      "forecast": "None",
-      "previous": "6.18"
-    },
-    {
-      "time": "2026-01-21T15:30:00",
-      "currency": "CAD",
-      "impact": "low",
-      "event": "IPPI m/m / RMPI m/m",
-      "forecast": "0.3%",
-      "previous": "0.9%"
-    },
-    {
-      "time": "2026-01-21T15:30:00",
-      "currency": "USD",
-      "impact": "high",
-      "event": "President Trump Speaks / US President Trump Speech",
-      "forecast": "",
-      "previous": ""
-    },
-    {
-      "time": "2026-01-21T17:00:00",
-      "currency": "USD",
-      "impact": "medium",
-      "event": "Construction Spending m/m / Pending Home Sales MoM",
-      "forecast": "-0.3%",
-      "previous": "3.3%"
-    },
-    {
-      "time": "2026-01-21T18:45:00",
-      "currency": "EUR",
-      "impact": "medium",
-      "event": "ECB President Lagarde Speaks / ECB President Lagarde Speech",
-      "forecast": "",
-      "previous": ""
-    },
-    {
-      "time": "2026-01-21T20:30:00",
-      "currency": "EUR",
-      "impact": "low",
-      "event": "German Buba President Nagel Speaks",
-      "forecast": "",
-      "previous": ""
-    },
-    {
-      "time": "2026-01-21T23:30:00",
-      "currency": "USD",
-      "impact": "low",
-      "event": "API Crude Oil Stock Change / API Weekly Statistical Bulletin",
-      "forecast": "",
-      "previous": ""
-    },
-    {
-      "time": "2026-01-21T23:45:00",
-      "currency": "NZD",
-      "impact": "low",
-      "event": "Visitor Arrivals m/m",
-      "forecast": "",
-      "previous": "0.6%"
-    },
-    {
-      "time": "2026-01-22T01:50:00",
-      "currency": "JPY",
-      "impact": "medium",
-      "event": "Balance of Trade / Exports YoY",
-      "forecast": "357",
-      "previous": "316.7"
-    },
-    {
-      "time": "2026-01-22T02:30:00",
-      "currency": "AUD",
-      "impact": "high",
-      "event": "Employment Change / Full Time Employment Chg",
-      "forecast": "28.3K",
-      "previous": "-21.3K"
-    },
-    {
-      "time": "2026-01-22T09:00:00",
-      "currency": "GBP",
-      "impact": "low",
-      "event": "Public Sector Net Borrowing",
-      "forecast": "13.4B",
-      "previous": "11.7B"
-    },
-    {
-      "time": "2026-01-22T09:02:00",
-      "currency": "CNY",
-      "impact": "low",
-      "event": "Foreign Direct Investment ytd/y",
-      "forecast": "",
-      "previous": "-7.5%"
-    },
-    {
-      "time": "2026-01-22T11:15:00",
-      "currency": "ALL",
-      "impact": "low",
-      "event": "WEF Annual Meetings",
-      "forecast": "",
-      "previous": ""
-    },
-    {
-      "time": "2026-01-22T13:00:00",
-      "currency": "EUR",
-      "impact": "low",
-      "event": "German Buba Monthly Report",
-      "forecast": "",
-      "previous": ""
-    },
-    {
-      "time": "2026-01-22T13:00:00",
-      "currency": "GBP",
-      "impact": "low",
-      "event": "CBI Distributive Trades / CBI Realized Sales",
-      "forecast": "-35",
-      "previous": "-44"
-    },
-    {
-      "time": "2026-01-22T14:30:00",
-      "currency": "EUR",
-      "impact": "low",
-      "event": "ECB Monetary Policy Meeting Accounts",
-      "forecast": "",
-      "previous": ""
-    },
-    {
-      "time": "2026-01-22T15:30:00",
-      "currency": "CAD",
-      "impact": "low",
-      "event": "NHPI m/m / New Housing Price Index MoM",
-      "forecast": "-0.2%",
-      "previous": "0.0%"
-    },
-    {
-      "time": "2026-01-22T15:30:00",
-      "currency": "USD",
-      "impact": "high",
-      "event": "Final GDP Price Index q/q / Final GDP q/q",
-      "forecast": "4.3%",
-      "previous": "4.3%"
-    },
-    {
-      "time": "2026-01-22T17:00:00",
-      "currency": "EUR",
-      "impact": "low",
-      "event": "Consumer Confidence / Consumer Confidence Flash",
-      "forecast": "-13",
-      "previous": "-15"
-    },
-    {
-      "time": "2026-01-22T17:00:00",
-      "currency": "USD",
-      "impact": "high",
-      "event": "Core PCE Price Index MoM / Core PCE Price Index m/m",
-      "forecast": "0.2%",
-      "previous": ""
-    },
-    {
-      "time": "2026-01-22T17:30:00",
-      "currency": "USD",
-      "impact": "low",
-      "event": "Natural Gas Storage",
-      "forecast": "-82B",
-      "previous": "-71B"
-    },
-    {
-      "time": "2026-01-22T19:00:00",
-      "currency": "USD",
-      "impact": "low",
-      "event": "Crude Oil Inventories / EIA Crude Oil Stocks Change",
-      "forecast": "-2.5M",
-      "previous": "3.4M"
-    },
-    {
-      "time": "2026-01-22T23:45:00",
-      "currency": "NZD",
-      "impact": "high",
-      "event": "CPI q/q / Inflation Rate QoQ",
-      "forecast": "0.5%",
-      "previous": "1.0%"
-    },
-    {
-      "time": "2026-01-23T00:00:00",
-      "currency": "AUD",
-      "impact": "low",
-      "event": "Flash Manufacturing PMI / Flash Services PMI",
-      "forecast": "",
-      "previous": "52.2"
-    },
-    {
-      "time": "2026-01-23T01:30:00",
-      "currency": "JPY",
-      "impact": "medium",
-      "event": "Core Inflation Rate YoY / Inflation Rate YoY",
-      "forecast": "None",
-      "previous": "2.9"
-    },
-    {
-      "time": "2026-01-23T02:01:00",
-      "currency": "GBP",
-      "impact": "low",
-      "event": "GfK Consumer Confidence / Gfk Consumer Confidence",
-      "forecast": "-17",
-      "previous": "-17"
-    },
-    {
-      "time": "2026-01-23T02:30:00",
-      "currency": "JPY",
-      "impact": "low",
-      "event": "Flash Manufacturing PMI / S&P Global Manufacturing PMI Flash",
-      "forecast": "50.1",
-      "previous": "49.7"
-    },
-    {
-      "time": "2026-01-23T05:00:00",
-      "currency": "JPY",
-      "impact": "medium",
-      "event": "BoJ Interest Rate Decision / BoJ Quarterly Outlook Report",
-      "forecast": "0.75",
-      "previous": "0.75"
-    },
-    {
-      "time": "2026-01-23T05:30:00",
-      "currency": "JPY",
-      "impact": "high",
-      "event": "BOJ Outlook Report / BOJ Policy Rate",
-      "forecast": "<0.75%",
-      "previous": "<0.75%"
-    },
-    {
-      "time": "2026-01-23T08:30:00",
-      "currency": "JPY",
-      "impact": "high",
-      "event": "BOJ Press Conference",
-      "forecast": "",
-      "previous": ""
-    },
-    {
-      "time": "2026-01-23T09:00:00",
-      "currency": "GBP",
-      "impact": "high",
-      "event": "Retail Sales MoM / Retail Sales YoY",
-      "forecast": "0.0%",
-      "previous": "-0.1%"
-    },
-    {
-      "time": "2026-01-23T10:15:00",
-      "currency": "EUR",
-      "impact": "medium",
-      "event": "French Flash Manufacturing PMI / French Flash Services PMI",
-      "forecast": "50.3",
-      "previous": "50.6"
-    },
-    {
-      "time": "2026-01-23T10:30:00",
-      "currency": "EUR",
-      "impact": "high",
-      "event": "German Flash Manufacturing PMI / German Flash Services PMI",
-      "forecast": "47.8",
-      "previous": "47.7"
-    },
-    {
-      "time": "2026-01-23T11:00:00",
-      "currency": "EUR",
-      "impact": "low",
-      "event": "Flash Manufacturing PMI / Flash Services PMI",
-      "forecast": "49.1",
-      "previous": "49.2"
-    },
-    {
-      "time": "2026-01-23T11:15:00",
-      "currency": "ALL",
-      "impact": "medium",
-      "event": "WEF Annual Meetings",
-      "forecast": "",
-      "previous": ""
-    },
-    {
-      "time": "2026-01-23T11:30:00",
-      "currency": "GBP",
-      "impact": "high",
-      "event": "Flash Manufacturing PMI / Flash Services PMI",
-      "forecast": "50.6",
-      "previous": "51.2"
-    },
-    {
-      "time": "2026-01-23T12:00:00",
-      "currency": "EUR",
-      "impact": "medium",
-      "event": "ECB President Lagarde Speaks / ECB President Lagarde Speech",
-      "forecast": "",
-      "previous": ""
-    },
-    {
-      "time": "2026-01-23T15:30:00",
-      "currency": "CAD",
-      "impact": "medium",
-      "event": "Core Retail Sales m/m / Retail Sales Ex Autos MoM",
-      "forecast": "1.0%",
-      "previous": "-0.6%"
-    },
-    {
-      "time": "2026-01-23T16:45:00",
-      "currency": "USD",
-      "impact": "low",
-      "event": "S&P Global Composite PMI Flash / S&P Global Manufacturing PMI Flash",
-      "forecast": "52.1",
-      "previous": "51.8"
-    },
-    {
-      "time": "2026-01-23T17:00:00",
-      "currency": "USD",
-      "impact": "low",
-      "event": "Michigan Consumer Sentiment Final",
-      "forecast": "54",
-      "previous": "52.9"
+      "previous": "None"
     }
   ]
 }
