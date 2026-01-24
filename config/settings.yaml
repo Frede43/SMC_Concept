@@ -64,35 +64,35 @@ timeframes:
   htf: "D1"   # D1 (Trend fort)
   
 # --- Risk Management ---
-# ⚠️ OPTIMISÉ POUR COMPTE 300$ - ULTRA CONSERVATEUR ⚠️
+# ✅ OPTIMISÉ POUR COMPTE 4300$ - MODE STANDARD
 risk:
-  risk_per_trade: 0.20      # 🛡️ RÉDUIT à 0.20% = 0.60$ par trade (au lieu de 0.75$)
-  max_daily_loss: 0.60      # 🛡️ RÉDUIT à 0.60% = max 2$ perte/jour (3 trades perdants max)
-  max_open_trades: 2        # 🛡️ RÉDUIT à 2 (au lieu de 3) pour petit capital
-  max_spread_pips: 2.0      # 🛡️ STRICT 2 pips max (était 5.0) pour éviter trades coûteux
+  risk_per_trade: 0.50      # 🚀 AUGMENTÉ à 0.50% = ~21.50$ par trade (capital suffisant)
+  max_daily_loss: 1.50      # 🚀 AUGMENTÉ à 1.50% = ~64.50$ max perte/jour (3 trades perdants)
+  max_open_trades: 5        # 🚀 AUGMENTÉ à 5 (au lieu de 2) pour plus d'opportunités
+  max_spread_pips: 4.0      # 🚀 ASSOUPLI à 4.0 pips (était 2.0) pour plus de setups
   
   # 🛡️ SECURITÉ ANTI-DOUBLON (STACKING)
-  min_stacking_distance_pips: 15.0 # ✅ Augmenté à 15 pips (était 5)
-  min_stacking_time_seconds: 300   # ✅ Augmenté à 5 min (était 2 min)
+  min_stacking_distance_pips: 10.0 # ✅ Réduit à 10 pips (plus flexible)
+  min_stacking_time_seconds: 180   # ✅ Réduit à 3 min (plus flexible)
   
   risk_reward:
-    min: 2.0                # ⚡ ADJUSTED: 2.0 pour setups haute probabilité (Score > 80%)
-    target: 4.0             # ✅ AUGMENTÉ à 4:1 (était 3.0) pour meilleure rentabilité
+    min: 2.0                # ⚡ Minimum 2:1 pour setups haute probabilité
+    target: 4.0             # 🎯 Objectif 4:1 pour meilleure rentabilité
     
   management:
     break_even: true        
-    break_even_trigger: 0.7 # 🛡️ STRICT (10-12 pips) - Sécuriser TRÈS vite en M15
+    break_even_trigger: 0.7 # Sécuriser à 0.7R (10-12 pips)
     break_even_offset: 2    
-    partial_close: false    # ❌ DÉSACTIVÉ pour petit compte (lot 0.01 trop petit pour split)
-    partial_close_trigger: 2.0
-    partial_close_pct: 0.5
+    partial_close: true     # ✅ ACTIVÉ pour capital suffisant
+    partial_close_trigger: 2.0  # Prendre 50% des profits à 2R
+    partial_close_pct: 0.5      # Fermer 50% de la position
     trailing_stop: true     
-    trailing_trigger: 2.5   # ✅ AUGMENTÉ à 2.5R (était 2.0R) - Trail après bon profit
+    trailing_trigger: 2.0   # ✅ RÉDUIT à 2.0R (était 2.5R) - Trail plus tôt
     trailing_dist: 1.0      # Trail large pour laisser respirer
     
   anti_tilt:
     enabled: true
-    max_losing_streak: 2    # ✅ RÉDUIT à 2 (était 3) - Plus strict sur petit compte
+    max_losing_streak: 3    # ✅ AUGMENTÉ à 3 (était 2) - Plus de tolérance
 
 # --- SMC Strategy Parameters ---
 # ✅ OPTIMISÉ - Qualité + Quantité (LuxAlgo Recommendations)
@@ -191,33 +191,25 @@ filters:
     
   news:
     enabled: true
-    mode: "real"  # 🆕 CHANGÉ: real au lieu de simulated (multi-source: ForexFactory + TradingView + MyFxBook)
-    minutes_before: 45  # ✅ 45min avant
-    minutes_after: 45   # ✅ 45min après
-    filter_high_impact: true
-    filter_medium_impact: true  # ✅ Bloquer aussi MEDIUM impact
+    mode: "real"  # Multi-source (ForexFactory + TradingView)
+    minutes_before: 30  # 🚀 RÉDUIT à 30min (était 45min) - Plus flexible
+    minutes_after: 30   # 🚀 RÉDUIT à 30min (était 45min) - Plus flexible
+    filter_high_impact: true    # Bloquer uniquement HIGH impact
+    filter_medium_impact: false # 🚀 DÉSACTIVÉ - Ne plus bloquer MEDIUM impact
     
-    # 🆕 OPTIMISÉ: Fenêtre élargie pour certains MEDIUM events critiques
-    medium_impact_window:
-      minutes_before: 120  # 2h avant (au lieu de 45min)
-      minutes_after: 60    # 1h après
+    # ⚠️ Fenêtre pour events MEDIUM désactivée (medium_impact_window supprimée)
     
-    # 🆕 NOUVEAU: Liste events MEDIUM à traiter comme HIGH impact
+    # 🆕 Liste events critiques à bloquer même si MEDIUM
     critical_medium_events:
-      - "Retail Sales"
-      - "Core PPI"
-      - "Building Permits"
-      - "Housing Starts"
-      - "Fed Chair Powell Speaks"
-      - "FOMC Member Williams Speaks"
-      - "ISM Manufacturing PMI"
-      - "Michigan Consumer Sentiment"
+      - "FOMC Rate Decision"       # Toujours critique
+      - "NFP"                      # Non-Farm Payrolls
+      - "Fed Chair Powell Speaks"  # Discours Fed critique
     
-    # 🆕 NOUVEAU: Alertes proactives
+    # 🆕 Alertes proactives (notifications uniquement, pas de blocage)
     proactive_alerts:
       enabled: true
-      alert_hours_before: 4  # Notification Discord/Telegram 4h avant news critique
-      alert_high_only: true   # Seulement pour HIGH impact
+      alert_hours_before: 2  # 🚀 RÉDUIT à 2h (était 4h) - Moins intrusif
+      alert_high_only: true  # Seulement pour HIGH impact
     
   advanced:
     min_volume_percentile: 50 # Volume relatif requis
