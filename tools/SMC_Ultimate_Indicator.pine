@@ -1,0 +1,252 @@
+//@version=5
+indicator("SMC Ultimate Institutional [Pro]", overlay=true, max_lines_count=500, max_labels_count=500, max_boxes_count=500)
+
+// =============================================================================
+// 🎨 SETTINGS & STYLING
+// =============================================================================
+grp_struct = "🏛️ MARKET STRUCTURE"
+mode_struct  = input.string("Swing", "Structure Mode", options=["Swing", "Internal"], group=grp_struct)
+swing_len    = input.int(5, "Swing Length", minval=3, group=grp_struct)
+show_bos     = input.bool(true, "Show BOS (Trend Continuation)", group=grp_struct)
+show_choch   = input.bool(true, "Show CHoCH (Trend Change)", group=grp_struct)
+
+grp_liq = "💧 LIQUIDITY & SWEEPS"
+show_sweeps  = input.bool(true, "Show Liquidity Sweeps (x)", group=grp_liq)
+show_pdl_pdh = input.bool(true, "Show PDH / PDL", group=grp_liq)
+
+grp_ict = "💰 ICT CONCEPTS"
+show_fvg     = input.bool(true, "Show Imbalances (FVG)", group=grp_ict)
+show_ob      = input.bool(true, "Show Order Blocks", group=grp_ict)
+show_pd      = input.bool(true, "Show Premium/Discount Zone", group=grp_ict)
+
+grp_col = "🎨 THEME"
+c_bull       = input.color(#00E676, "Bullish Color", group=grp_col) // Vibrant Green
+c_bear       = input.color(#FF5252, "Bearish Color", group=grp_col) // Vibrant Red
+c_text       = input.color(#FFFFFF, "Text Color", group=grp_col)
+
+// =============================================================================
+// 🧮 CORE CALCULATIONS
+// =============================================================================
+
+// High/Low Previous Day (Global calculation for Dash & Plot)
+d_high  = request.security(syminfo.tickerid, "D", high[1], lookahead=barmerge.lookahead_on)
+d_low   = request.security(syminfo.tickerid, "D", low[1],  lookahead=barmerge.lookahead_on)
+// Daily Open/Close for Trend (Global calculation to fix scope error)
+d_close = request.security(syminfo.tickerid, "D", close, lookahead=barmerge.lookahead_on)
+d_open  = request.security(syminfo.tickerid, "D", open,  lookahead=barmerge.lookahead_on)
+
+// RSI (Global calculation for consistency)
+rsi_val = ta.rsi(close, 14)
+
+// --- Swing Points ---
+// We use Pivots to identify Swing Highs and Lows
+ph = ta.pivothigh(high, swing_len, swing_len)
+pl = ta.pivotlow(low, swing_len, swing_len)
+
+// Variables to track Structure
+var float swing_high_val = na
+var float swing_low_val  = na
+var int   trend          = 0 // 1 = Bull, -1 = Bear
+var line  last_line      = na
+var box   last_pd_box    = na
+
+// --- Structure Tracking with Arrays for mitigation ---
+// Track recent structural points
+// Logic: If close breaks Swing Point -> BOS/CHoCH. If wick breaks but Close internal -> Sweep.
+
+// Detect New Pivots
+if not na(ph)
+    swing_high_val := ph
+if not na(pl)
+    swing_low_val := pl
+
+// Real-time Break Detection
+// To be "Pro", we look for Candle Close for Structure, Wick for Sweeps.
+
+// Current High/Low tracking of the defined range
+var float strong_high = na
+var float strong_low  = na
+var float weak_high   = na 
+var float weak_low    = na
+
+// =============================================================================
+// 🏛️ MARKET STRUCTURE & SWEEPS LOGIC
+// =============================================================================
+// This logic mirrors the Python Bot: It differentiates "Breaks" vs "Sweeps"
+
+// Variables for recursive tracking
+var float prev_high = na
+var float prev_low  = na
+var int   structure_state = 0 // 1 = Bull, -1 = Bear
+
+// Store lines to update them if needed
+var line line_bos_up = na
+var line line_bos_dn = na
+
+// Detect simple fractal points
+is_ph = not na(ph)
+is_pl = not na(pl)
+
+// Update Levels on Confirmation
+if is_ph
+    prev_high := ph
+    // Draw Weak High if Bearish Trend
+    if trend == -1 and show_bos
+        // label.new(bar_index[swing_len], ph, "Weak High", color=color.new(c_bear, 100), textcolor=color.gray, style=label.style_label_down, size=size.tiny)
+        na
+
+if is_pl
+    prev_low := pl
+    // Draw Weak Low if Bullish Trend
+    if trend == 1 and show_bos
+        // label.new(bar_index[swing_len], pl, "Weak Low", color=color.new(c_bull, 100), textcolor=color.gray, style=label.style_label_up, size=size.tiny)
+        na
+
+// --- BOS / CHOCH / SWEEP CHECK ---
+cross_high_close = ta.crossover(close, prev_high)
+cross_low_close  = ta.crossunder(close, prev_low)
+cross_high_wick  = high > prev_high and close < prev_high // Wick detected above
+cross_low_wick   = low < prev_low and close > prev_low    // Wick detected below
+
+// 1. LIQUIDITY SWEEP DETECTION (Crucial for Bot alignment)
+if show_sweeps and not na(prev_high)
+    if high > prev_high and high[1] <= prev_high and close < prev_high // Sweep High
+        label.new(bar_index, high, "x", color=color.new(c_bear, 100), textcolor=c_bear, style=label.style_none, size=size.normal)
+        // alert("Liquidity Sweep High", alert.freq_once_per_bar)
+
+if show_sweeps and not na(prev_low)
+    if low < prev_low and low[1] >= prev_low and close > prev_low // Sweep Low
+        label.new(bar_index, low, "x", color=color.new(c_bull, 100), textcolor=c_bull, style=label.style_none, size=size.normal)
+        // alert("Liquidity Sweep Low", alert.freq_once_per_bar)
+
+// 2. BULLISH STRUCTURE BREAK
+if not na(prev_high) and cross_high_close
+    is_choch = trend == -1 // If we were bearish, this is a change
+    trend := 1 // Now Bullish
+    txt = is_choch ? "CHoCH" : "BOS"
+    
+    if (is_choch and show_choch) or (not is_choch and show_bos)
+        line.new(bar_index, prev_high, bar_index[10], prev_high, color=c_bull, style=line.style_solid, width=1)
+        label.new(bar_index, prev_high, txt, color=color.new(c_bull, 100), textcolor=c_bull, style=label.style_label_down, size=size.tiny)
+    
+    // Update structural range for P/D
+    strong_low := prev_low // The low that caused the break is the Strong Low
+
+// 3. BEARISH STRUCTURE BREAK
+if not na(prev_low) and cross_low_close
+    is_choch = trend == 1 // If we were bullish, this is a change
+    trend := -1 // Now Bearish
+    txt = is_choch ? "CHoCH" : "BOS"
+    
+    if (is_choch and show_choch) or (not is_choch and show_bos)
+        line.new(bar_index, prev_low, bar_index[10], prev_low, color=c_bear, style=line.style_solid, width=1)
+        label.new(bar_index, prev_low, txt, color=color.new(c_bear, 100), textcolor=c_bear, style=label.style_label_up, size=size.tiny)
+    
+    // Update structural range for P/D
+    strong_high := prev_high // The high that caused the break is the Strong High
+
+// =============================================================================
+// ⚖️ PREMIUM / DISCOUNT ZONES
+// =============================================================================
+// Shows the 50% equilibrium of the current dealing range
+var box pd_box = na
+if show_pd
+    // Define Range based on recent Strong structure points
+    // Simplified logic: Tracking highest high since strong_low or vice versa
+    
+    // Visual placeholder logic for P/D - Update dynamically based on visible range in a real robust script
+    // Here we simply draw a box if we have a defined range
+    if not na(strong_high) and not na(strong_low)
+        // Calculate 50%
+        mid = (strong_high + strong_low) / 2
+        
+        // Remove old box to animate it moving
+        box.delete(pd_box)
+        
+        // Color based on trend
+        pd_col = trend == 1 ? c_bull : c_bear
+        
+        // Draw new box
+        // pd_box := box.new(bar_index - 20, strong_high, bar_index + 5, strong_low, border_color=color.new(color.gray, 80), bgcolor=color.new(pd_col, 95))
+        // line.new(bar_index - 20, mid, bar_index + 5, mid, color=color.new(color.gray, 50), style=line.style_dotted)
+
+// =============================================================================
+// 📊 FAIR VALUE GAPS (FVG) - AUTO EXTEND
+// =============================================================================
+if show_fvg
+    // Bullish FVG
+    if low > high[2]
+        // Create FVG Box
+        // box.new(bar_index[2], high[2], bar_index + 5, low, border_color=na, bgcolor=color.new(c_bull, 85), text="FVG", text_size=size.tiny, text_color=color.new(c_bull, 40))
+        na
+        
+    // Bearish FVG
+    if high < low[2]
+        // box.new(bar_index[2], low[2], bar_index + 5, high, border_color=na, bgcolor=color.new(c_bear, 85), text="FVG", text_size=size.tiny, text_color=color.new(c_bear, 40))
+        na
+
+// =============================================================================
+// 📅 PREVIOUS DAY HIGH / LOW (PDH / PDL)
+// =============================================================================
+if show_pdl_pdh
+    var line pdh_line = na
+    var line pdl_line = na
+    
+    line.delete(pdh_line)
+    line.delete(pdl_line)
+    
+    // We already calculated d_high/d_low globally, so valid here
+    pdh_line := line.new(bar_index - 50, d_high, bar_index + 10, d_high, color=color.new(color.gray, 50), style=line.style_dashed)
+    pdl_line := line.new(bar_index - 50, d_low,  bar_index + 10, d_low,  color=color.new(color.gray, 50), style=line.style_dashed)
+    
+    // Labels
+    // label.new(bar_index + 10, d_high, "PDH", style=label.style_none, textcolor=color.gray, size=size.tiny)
+    // label.new(bar_index + 10, d_low,  "PDL", style=label.style_none, textcolor=color.gray, size=size.tiny)
+
+// =============================================================================
+// 🚀 PRO DASHBOARD (MTF + STATUS)
+// =============================================================================
+// A clean, compact table showing status
+var table dash = table.new(position.top_right, 2, 6, bgcolor=color.new(#131722, 10), border_color=color.new(color.gray, 80))
+
+if barstate.islast
+    // Header
+    table.cell(dash, 0, 0, "SMC PRIME", text_color=c_text, bgcolor=color.new(color.black, 0), text_size=size.small)
+    table.cell(dash, 1, 0, "INSTITUTIONAL", text_color=color.silver, bgcolor=color.new(color.black, 0), text_size=size.small)
+    
+    // 1. Structure
+    struct_txt = trend == 1 ? "BULLISH" : "BEARISH"
+    struct_col = trend == 1 ? c_bull : c_bear
+    table.cell(dash, 0, 1, "Structure (LTF)", text_color=color.silver, text_halign=text.align_left)
+    table.cell(dash, 1, 1, struct_txt, text_color=struct_col, bgcolor=color.new(struct_col, 90))
+    
+    // 2. HTF Trend (Daily)
+    // d_close/d_open are now calculated globally
+    d_trend = d_close > d_open ? "BULLISH" : "BEARISH"
+    d_col   = d_close > d_open ? c_bull : c_bear
+    
+    table.cell(dash, 0, 2, "Trend (Daily)", text_color=color.silver, text_halign=text.align_left)
+    table.cell(dash, 1, 2, d_trend, text_color=d_col, bgcolor=color.new(d_col, 90))
+    
+    // 3. Liquidity Status
+    liq_txt = "Waiting"
+    liq_col = color.gray
+    // Check if we are near PDH/PDL
+    dist_pdh = math.abs(close - d_high) / syminfo.mintick
+    dist_pdl = math.abs(close - d_low) / syminfo.mintick
+    
+    if dist_pdh < 100 
+        liq_txt := "Near PDH"
+        liq_col := color.orange
+    if dist_pdl < 100
+        liq_txt := "Near PDL"
+        liq_col := color.orange
+        
+    table.cell(dash, 0, 3, "Liquidity", text_color=color.silver, text_halign=text.align_left)
+    table.cell(dash, 1, 3, liq_txt, text_color=liq_col)
+    
+    // 4. Current State
+    // Using global rsi_val
+    mom_state = rsi_val > 50 ? "Premium" : "Discount"
+    table.cell(dash, 0, 4, "Pricing", text_color=color.silver, text_halign=text.align_left)
+    table.cell(dash, 1, 4, mom_state, text_color=rsi_val > 50 ? c_bear : c_bull)

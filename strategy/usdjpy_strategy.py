@@ -194,9 +194,55 @@ class UsdJpySMCStrategy:
 
         return None
 
+    def _detect_ltf_structure_break(self, df: pd.DataFrame) -> bool:
+        """
+        Détecte un Shift de structure (CHoCH) baissier récent sur le LTF (M15).
+        On cherche une cassure franche du dernier Higher Low significatif.
+        """
+        try:
+            # 1. Identifier les fractals (Swings)
+            highs = []
+            lows = []
+            
+            # Scan des 30 dernières bougies
+            window = 30
+            if len(df) < window: window = len(df)
+            
+            for i in range(2, window - 2):
+                idx = len(df) - 1 - i
+                current = df.iloc[idx]
+                
+                # Swing Low
+                prev = df.iloc[idx-1]
+                next_c = df.iloc[idx+1]
+                if current['low'] < prev['low'] and current['low'] < next_c['low']:
+                    lows.append((idx, current['low']))
+            
+            if not lows:
+                return False
+                
+            # 2. Le dernier Higher Low (avant le mouvement actuel)
+            # On cherche le plus bas récent pertinent
+            last_swing_low = lows[0][1] # Le plus récent
+            
+            # 3. Vérifier si le prix actuel a cassé ce bas (Close < Low)
+            current_close = df.iloc[-1]['close']
+            
+            # Une cassure confirmée (Close < Swing Low)
+            is_broken = current_close < last_swing_low
+            
+            if is_broken:
+                logger.info(f"   📉 CHoCH Baissier confirmé M15: Close {current_close:.3f} < Swing Low {last_swing_low:.3f}")
+                
+            return is_broken
+            
+        except Exception as e:
+            logger.error(f"Erreur detection CHoCH: {e}")
+            return False
+
     def _check_ltf_entry_timing(self, h4_ob: dict) -> Tuple[bool, float]:
         """
-        Vérifie si le prix M15 actuel est dans la zone de l'OB H4.
+        Vérifie si le prix M15 actuel est dans la zone de l'OB H4 ET qu'une réaction est observée.
         """
         if self.ltf_df is None or self.ltf_df.empty:
             return False, 0.0
@@ -204,12 +250,23 @@ class UsdJpySMCStrategy:
         current_price = self.ltf_df["close"].iloc[-1]
 
         # La zone d'entrée est l'OB H4 (+/- un petit buffer)
-        # On veut vendre DANS l'OB ou juste en dessous lors du retest
-
         buffer = 5 * self.pip_value
 
-        if (h4_ob["low"] - buffer) <= current_price <= (h4_ob["high"] + buffer):
-            return True, current_price
+        in_zone = (h4_ob["low"] - buffer) <= current_price <= (h4_ob["high"] + buffer)
+        
+        if in_zone:
+            # ✅ CONFIRMATION SMC (Pur):
+            # On ne place pas d'ordre limité aveugle ("Touch Trade").
+            # On attend que le prix réagisse -> CHoCH (Change of Character) baissier sur M15
+            has_choch = self._detect_ltf_structure_break(self.ltf_df)
+            
+            if has_choch:
+                return True, current_price
+            else:
+                # Loguer une fois de temps en temps
+                if pd.Timestamp.now().minute % 15 == 0:
+                    logger.debug("   👀 Prix dans OB H4, en attente de CHoCH M15...")
+                return False, 0.0
 
         return False, 0.0
 

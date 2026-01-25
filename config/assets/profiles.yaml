@@ -23,20 +23,26 @@ forex_major:
 # 2. COMMODITIES (XAUUSD, XAGUSD, WTI)
 # Caractéristiques: Haute volatilité, mèche de chasse fréquentes, spreads plus larges
 commodity:
-  smc:
-    liquidity:
-      sweep_lookback: 30      # Regarder plus loin
-      min_wick_ratio: 0.4     # Exiger des mèches plus claires (rejet fort)
-    fvg:
-      min_size_pips: 10.0     # Ignorer le bruit (petits gaps)
-      mitigation_threshold: 0.6
-    structure:
-      swing_length: 8         # Filtrer le bruit mineur
   risk:
     max_spread_pips: 40.0     # XAU spread en points (ex: 30-40 cents)
     min_sl_pips: 50.0         # Stop large obligatoire sur Gold
     risk_per_trade: 0.5       # Risque réduit car volatilité extrême
-    allow_counter_trend: true # Autorisé pour les mèches de chasse (V-Reversals)
+    allow_counter_trend: false # 🔒 SÉCURITÉ: Désactivé (Follow Trend Only)
+    
+    # Gestion spécifique Gold
+    management:
+      trailing_mode: "structure" # Indispensable sur l'Or
+      trailing_trigger: 2.0
+  smc:
+    min_confidence_score: 75  # Seuil élevé requis
+    liquidity:
+      sweep_lookback: 30
+      min_wick_ratio: 0.4
+    fvg:
+      min_size_pips: 10.0
+      mitigation_threshold: 0.6
+    structure:
+      swing_length: 8
 
 # 3. CRYPTO (BTCUSD, ETHUSD) [OPTIMISÉ ICT PRO 2026]
 # Caractéristiques: Volatilité, Inducement, Fake Moves, Displacement requis
@@ -77,7 +83,9 @@ crypto:
     max_spread_pips: 3000.0   # Tolérance spread
     risk_per_trade: 0.5       # Risque prudent
     allow_counter_trend: false # ⛔ SUICIDE INTERDIT (Short Bull Run)
-    
+    management:
+      trailing_mode: "structure"
+
 # 4. INDICES (US30, NAS100, SPX500)
 # Caractéristiques: Tendance forte, mouvements rapides session NY
 indices:

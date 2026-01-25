@@ -161,6 +161,7 @@ risk:
     partial_close_trigger: 2.0  # Prendre 50% des profits à 2R
     partial_close_pct: 0.5      # Fermer 50% de la position
     trailing_stop: true     
+    trailing_mode: "structure" # 🆕 SMC PUR: Suivre les swings (Fractals)
     trailing_trigger: 2.0   # ✅ RÉDUIT à 2.0R (était 2.5R) - Trail plus tôt
     trailing_dist: 1.0      # Trail large pour laisser respirer
     
@@ -171,6 +172,7 @@ risk:
 # --- SMC Strategy Parameters ---
 # ✅ OPTIMISÉ - Qualité + Quantité (LuxAlgo Recommendations)
 smc:
+  pure_smc_mode: true     # 🆕 DÉSACTIVER les indicateurs lagging (EMA, etc.)
   min_confidence: 0.65    # ✅ ASSOUPLIR à 0.65 (était 0.70) - Équilibre optimal
   trend_filter: "balanced"  # ✅ CHANGÉ: balanced au lieu de strict - Plus flexible
   
@@ -253,12 +255,12 @@ smc:
 # --- Filters ---
 filters:
   ma_trend:
-    enabled: true
+    enabled: false        # ❌ PURE SMC: Pas de Moyenne Mobile (Lagging)
     period: 200
     timeframe: "D1"
     
   rsi:
-    enabled: true
+    enabled: true         # ✅ CONSERVÉ: Momentum proxy (Price Based Osc.)
     period: 14
     overbought: 70
     oversold: 30

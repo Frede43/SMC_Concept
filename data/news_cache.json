@@ -1,38 +1,54 @@
 {
-  "timestamp": "2026-01-24T20:14:04.065556",
-  "source": "TradingView",
+  "timestamp": "2026-01-25T12:04:32.311992",
+  "source": "ForexFactory + TradingView",
   "events": [
     {
-      "time": "2026-01-26T15:30:00",
-      "currency": "USD",
+      "time": "2026-01-25T23:00:00",
+      "currency": "AUD",
       "impact": "low",
-      "event": "Chicago Fed National Activity Index",
-      "forecast": "None",
-      "previous": "-0.21"
+      "event": "Bank Holiday",
+      "forecast": "",
+      "previous": ""
+    },
+    {
+      "time": "2026-01-26T11:00:00",
+      "currency": "EUR",
+      "impact": "medium",
+      "event": "German ifo Business Climate",
+      "forecast": "88.3",
+      "previous": "87.6"
+    },
+    {
+      "time": "2026-01-26T13:00:00",
+      "currency": "EUR",
+      "impact": "low",
+      "event": "German Buba President Nagel Speaks",
+      "forecast": "",
+      "previous": ""
     },
     {
       "time": "2026-01-26T15:30:00",
-      "currency": "USD",
+      "currency": "EUR",
       "impact": "low",
-      "event": "Chicago Fed National Activity Index",
-      "forecast": "None",
-      "previous": "None"
+      "event": "German Buba President Nagel Speaks",
+      "forecast": "",
+      "previous": ""
     },
     {
       "time": "2026-01-26T15:30:00",
       "currency": "USD",
       "impact": "medium",
-      "event": "Durable Goods Orders MoM",
-      "forecast": "0.5",
-      "previous": "-2.2"
+      "event": "Chicago Fed National Activity Index / Core Durable Goods Orders m/m",
+      "forecast": "0.3%",
+      "previous": "0.2%"
     },
     {
-      "time": "2026-01-26T15:30:00",
-      "currency": "USD",
+      "time": "2026-01-26T16:00:00",
+      "currency": "EUR",
       "impact": "low",
-      "event": "Durable Goods Orders Ex Transp MoM",
-      "forecast": "0.3",
-      "previous": "0.2"
+      "event": "Belgian NBB Business Climate",
+      "forecast": "-10.2",
+      "previous": "-11.9"
     },
     {
       "time": "2026-01-26T17:30:00",
@@ -43,6 +59,22 @@
       "previous": "-10.9"
     },
     {
+      "time": "2026-01-27T01:50:00",
+      "currency": "JPY",
+      "impact": "low",
+      "event": "SPPI y/y",
+      "forecast": "2.5%",
+      "previous": "2.7%"
+    },
+    {
+      "time": "2026-01-27T02:01:00",
+      "currency": "GBP",
+      "impact": "low",
+      "event": "BRC Shop Price Index y/y",
+      "forecast": "0.7%",
+      "previous": "0.6%"
+    },
+    {
       "time": "2026-01-27T02:30:00",
       "currency": "AUD",
       "impact": "medium",
@@ -51,12 +83,36 @@
       "previous": "1"
     },
     {
+      "time": "2026-01-27T04:00:00",
+      "currency": "NZD",
+      "impact": "low",
+      "event": "Credit Card Spending y/y",
+      "forecast": "",
+      "previous": "4.7%"
+    },
+    {
+      "time": "2026-01-27T07:00:00",
+      "currency": "JPY",
+      "impact": "low",
+      "event": "BOJ Core CPI y/y",
+      "forecast": "2.0%",
+      "previous": "2.2%"
+    },
+    {
       "time": "2026-01-27T07:00:00",
       "currency": "EUR",
       "impact": "low",
       "event": "New Car Registrations YoY",
       "forecast": "None",
       "previous": "2.1"
+    },
+    {
+      "time": "2026-01-27T10:00:00",
+      "currency": "EUR",
+      "impact": "low",
+      "event": "Spanish Unemployment Rate",
+      "forecast": "10.6%",
+      "previous": "10.5%"
     },
     {
       "time": "2026-01-27T15:15:00",
@@ -105,6 +161,70 @@
       "event": "BoJ Monetary Policy Meeting Minutes",
       "forecast": "None",
       "previous": "None"
+    },
+    {
+      "time": "2026-01-28T02:30:00",
+      "currency": "AUD",
+      "impact": "low",
+      "event": "Inflation Rate MoM / Inflation Rate YoY",
+      "forecast": "3.6",
+      "previous": "3.4"
+    },
+    {
+      "time": "2026-01-28T14:00:00",
+      "currency": "USD",
+      "impact": "low",
+      "event": "MBA 30-Year Mortgage Rate",
+      "forecast": "None",
+      "previous": "6.16"
+    },
+    {
+      "time": "2026-01-28T16:45:00",
+      "currency": "CAD",
+      "impact": "medium",
+      "event": "BoC Interest Rate Decision / BoC Monetary Policy Report",
+      "forecast": "2.25",
+      "previous": "2.25"
+    },
+    {
+      "time": "2026-01-28T17:30:00",
+      "currency": "CAD",
+      "impact": "low",
+      "event": "BoC Press Conference",
+      "forecast": "None",
+      "previous": "None"
+    },
+    {
+      "time": "2026-01-28T17:30:00",
+      "currency": "USD",
+      "impact": "low",
+      "event": "EIA Crude Oil Stocks Change / EIA Gasoline Stocks Change",
+      "forecast": "None",
+      "previous": "5.977"
+    },
+    {
+      "time": "2026-01-28T21:00:00",
+      "currency": "USD",
+      "impact": "medium",
+      "event": "Fed Interest Rate Decision",
+      "forecast": "3.75",
+      "previous": "3.75"
+    },
+    {
+      "time": "2026-01-28T21:30:00",
+      "currency": "USD",
+      "impact": "medium",
+      "event": "Fed Press Conference",
+      "forecast": "None",
+      "previous": "None"
+    },
+    {
+      "time": "2026-01-28T23:45:00",
+      "currency": "NZD",
+      "impact": "low",
+      "event": "Balance of Trade",
+      "forecast": "0.04",
+      "previous": "-0.163"
     }
   ]
 }

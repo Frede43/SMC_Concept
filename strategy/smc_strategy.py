@@ -33,31 +33,18 @@ from core.smt_detector import SMTDetector, SMTType
 from strategy.momentum_confirmation import MomentumConfirmationFilter  # ⚡ Check Momentum
 
 # 🆕 OPTIMISATIONS RENTABILITÉ (Phase 5)
-try:
-    from core.trend_strength_filter import TrendStrengthFilter  # Filtre ADX
-    TREND_STRENGTH_AVAILABLE = True
-except ImportError:
-    TREND_STRENGTH_AVAILABLE = False
-    TrendStrengthFilter = None
-    logger.warning("⚠️ Trend Strength Filter non disponible (module manquant)")
+# 🆕 OPTIMISATIONS RENTABILITÉ (Phase 5)
+# Trend Strength Filter (Désactivé pour clean logs)
+TREND_STRENGTH_AVAILABLE = False
+TrendStrengthFilter = None
 
-# Spread Guard
-try:
-    from utils.spread_guard import SpreadGuard  # Protection spread
-    SPREAD_GUARD_AVAILABLE = True
-except ImportError:
-    SPREAD_GUARD_AVAILABLE = False
-    SpreadGuard = None
-    logger.warning("⚠️ Spread Guard non disponible (module manquant)")
+# Spread Guard (Désactivé pour clean logs)
+SPREAD_GUARD_AVAILABLE = False
+SpreadGuard = None
 
 # 🌍 NOUVEAU: Analyse Fondamentale (Phase 2)
-try:
-    from core.fundamental_filter import FundamentalFilter
-
-    FUNDAMENTAL_AVAILABLE = True
-except ImportError:
-    FUNDAMENTAL_AVAILABLE = False
-    logger.warning("⚠️ Fundamental Filter non disponible (modules manquants)")
+# Fundamental Filter (Désactivé pour clean logs)
+FUNDAMENTAL_AVAILABLE = False
 
 
 # Classes déplacées vers strategy.components.data_models

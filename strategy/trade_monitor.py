@@ -16,6 +16,7 @@ from datetime import datetime
 class TradeManagementConfig:
     # Trailing Stop
     trailing_enabled: bool = True
+    trailing_mode: str = 'structure' # 'fixed' ou 'structure' (SMC Pur)
     trailing_activation_pips: float = 20
     trailing_distance_pips: float = 15
 
@@ -220,6 +221,46 @@ class TradeMonitor:
             }
         return None
 
+    def _find_structure_level(self, symbol: str, direction: int, timeframe=mt5.TIMEFRAME_M15) -> Optional[float]:
+        """
+        Trouve le dernier niveau structurel valide (Fractal) pour le trailing stop.
+        direction: 0 (BUY) -> Cherche dernier Higher Low
+        direction: 1 (SELL) -> Cherche dernier Lower High
+        """
+        try:
+            # Récupérer les 30 dernières bougies
+            rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, 30)
+            if rates is None or len(rates) < 5:
+                return None
+                
+            # Convertir en DataFrame simple ou utiliser numpy
+            # On cherche un pattern High-Low-High-Low (Fractal 5 barres classique)
+            # Indice -1 est la bougie en cours (non finie), on regarde de -2 à -30
+            
+            for i in range(2, len(rates) - 2):
+                idx = len(rates) - 1 - i
+                current = rates[idx]
+                
+                if direction == 0: # BUY -> Cherche Swing Low (Support)
+                    # Pattern: Low[i] < Low[i-1] et Low[i] < Low[i+1]
+                    if (current['low'] < rates[idx-1]['low'] and 
+                        current['low'] < rates[idx+1]['low'] and
+                        current['low'] < rates[idx-2]['low'] and 
+                        current['low'] < rates[idx+2]['low']):
+                        return current['low']
+                        
+                else: # SELL -> Cherche Swing High (Résistance)
+                    if (current['high'] > rates[idx-1]['high'] and 
+                        current['high'] > rates[idx+1]['high'] and
+                        current['high'] > rates[idx-2]['high'] and 
+                        current['high'] > rates[idx+2]['high']):
+                        return current['high']
+                        
+            return None
+        except Exception as e:
+            logger.error(f"Erreur structure trailing: {e}")
+            return None
+
     def _check_trailing_stop(self, position, profit_pips: float, state: Dict) -> Optional[Dict]:
         """Vérifie et applique le trailing stop si les conditions sont remplies."""
         symbol = position.symbol
@@ -236,18 +277,47 @@ class TradeMonitor:
             return None
 
         pip_size = self.get_pip_size(symbol)
+        
+        # Mode : Structure ou Fixe
+        trailing_mode = self.config.trailing_mode
+        structure_level = None
+        
+        if trailing_mode == 'structure':
+            structure_level = self._find_structure_level(symbol, position.type)
+            if structure_level:
+                # Ajouter un petit buffer de sécurité (ex: 2 pips)
+                buffer = 2 * pip_size
+                if position.type == mt5.ORDER_TYPE_BUY:
+                    structure_level -= buffer
+                else:
+                    structure_level += buffer
+
         current_tick = mt5.symbol_info_tick(symbol)
 
         if position.type == mt5.ORDER_TYPE_BUY:
             current_price = current_tick.bid
-            optimal_sl = current_price - (distance_pips * pip_size)
+            
+            # Calcul du SL optimal
+            if trailing_mode == 'structure' and structure_level and structure_level > position.price_open:
+                # Trailing sur structure (si valide et au-dessus de l'entrée pour sécuriser)
+                optimal_sl = structure_level
+            else:
+                # Fallback ou mode fixe
+                optimal_sl = current_price - (distance_pips * pip_size)
 
             # Ne modifier que si le nouveau SL est meilleur (plus haut pour un BUY)
-            if position.sl < optimal_sl - (pip_size * 0.5):
+            # Et surtout: ne JAMAIS redescendre le SL
+            if optimal_sl > position.sl + (pip_size * 0.5):
+                # Vérifier la distance minimale au prix actuel (Stops Level)
+                stops_level = mt5.symbol_info(symbol).stops_level * mt5.symbol_info(symbol).point
+                if current_price - optimal_sl < stops_level:
+                    return None # Trop proche du prix actuel
+                
                 success = self._modify_sl(position.ticket, optimal_sl, position.tp)
                 if success:
+                    mode_str = "STRUCTURE" if trailing_mode == 'structure' and structure_level else "FIXED"
                     logger.info(
-                        f"📈 TRAILING: {symbol} #{position.ticket} - SL trailing à {optimal_sl:.5f}"
+                        f"📈 TRAILING ({mode_str}): {symbol} #{position.ticket} - SL trailing à {optimal_sl:.5f}"
                     )
                     return {
                         "action": "trailing_stop",
@@ -256,16 +326,28 @@ class TradeMonitor:
                         "new_sl": optimal_sl,
                         "profit_pips": profit_pips,
                     }
+                    
         else:  # mt5.ORDER_TYPE_SELL
             current_price = current_tick.ask
-            optimal_sl = current_price + (distance_pips * pip_size)
+            
+            if trailing_mode == 'structure' and structure_level and structure_level < position.price_open:
+                optimal_sl = structure_level
+            else:
+                optimal_sl = current_price + (distance_pips * pip_size)
 
             # Ne modifier que si le nouveau SL est meilleur (plus bas pour un SELL)
-            if position.sl == 0 or position.sl > optimal_sl + (pip_size * 0.5):
+            # SL actuel = 0 signifie pas de SL, donc on peut mettre le nouveau
+            if position.sl == 0 or (optimal_sl < position.sl - (pip_size * 0.5)):
+                # Vérifier distance min
+                stops_level = mt5.symbol_info(symbol).stops_level * mt5.symbol_info(symbol).point
+                if optimal_sl - current_price < stops_level:
+                    return None
+                    
                 success = self._modify_sl(position.ticket, optimal_sl, position.tp)
                 if success:
+                    mode_str = "STRUCTURE" if trailing_mode == 'structure' and structure_level else "FIXED"
                     logger.info(
-                        f"📈 TRAILING: {symbol} #{position.ticket} - SL trailing à {optimal_sl:.5f}"
+                        f"📈 TRAILING ({mode_str}): {symbol} #{position.ticket} - SL trailing à {optimal_sl:.5f}"
                     )
                     return {
                         "action": "trailing_stop",

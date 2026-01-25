@@ -147,19 +147,32 @@ class DataHandler:
         return swing_highs, swing_lows
     
     @staticmethod
-    def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
-        """Ajoute des indicateurs techniques au DataFrame."""
+    def add_indicators(df: pd.DataFrame, config: dict = None) -> pd.DataFrame:
+        """
+        Ajoute des indicateurs techniques au DataFrame.
+        Configurable pour ne calculer que le nécessaire (Pureté SMC).
+        """
         df = df.copy()
+        config = config or {}
+        
+        # Par défaut, on active RSI et ATR (utiles pour Risk Manager et Momentum)
+        # Mais on désactive les EMAs pour le SMC pur par défaut
+        use_atr = config.get('atr', True)
+        use_rsi = config.get('rsi', True)
+        use_ema = config.get('ema', False) # Désactivé par défaut pour SMC Pur
         
         # ATR
-        df['atr'] = DataHandler.calculate_atr(df)
+        if use_atr:
+            df['atr'] = DataHandler.calculate_atr(df)
         
-        # EMAs
-        df['ema_20'] = DataHandler.calculate_ema(df['close'], 20)
-        df['ema_50'] = DataHandler.calculate_ema(df['close'], 50)
-        df['ema_200'] = DataHandler.calculate_ema(df['close'], 200)
+        # EMAs (Lagging indicators - souvent inutiles en SMC pur)
+        if use_ema:
+            df['ema_20'] = DataHandler.calculate_ema(df['close'], 20)
+            df['ema_50'] = DataHandler.calculate_ema(df['close'], 50)
+            df['ema_200'] = DataHandler.calculate_ema(df['close'], 200)
         
-        # RSI
-        df['rsi'] = DataHandler.calculate_rsi(df)
+        # RSI (Momentum check)
+        if use_rsi:
+            df['rsi'] = DataHandler.calculate_rsi(df)
         
         return df

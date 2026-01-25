@@ -109,6 +109,14 @@ class MomentumConfirmationFilter:
             logger.info(f"   ✅ Confirmation : Série baissière commencée (Downtrend initiation)")
             return True, "Bearish sequence started"
 
+        # ----- CRITÈRE 4 : DISPLACEMENT (Déplacement Pur) -----
+        # Le corps de la bougie actuelle est large (intention institutionnelle)
+        # Body > Moyenne des 5 derniers bodies
+        avg_body_5 = abs(last_candles["close"] - last_candles["open"]).mean()
+        if body > (avg_body_5 * 0.8) and is_bearish: # 0.8 pour être un peu flexible
+             logger.info(f"   ✅ Confirmation : Displacement baissier (Body {body:.1f} > Avg {avg_body_5:.1f})")
+             return True, "Bearish Displacement"
+
         # Aucune confirmation trouvée
         logger.warning(
             f"   ❌ SELL BLOQUÉ : Zone Premium Extrême ({premium_percent:.1f}%) sans confirmation de rejet"
@@ -188,6 +196,13 @@ class MomentumConfirmationFilter:
         if prev_1["close"] > prev_2["close"] and current["close"] > prev_1["close"]:
             logger.info(f"   ✅ Confirmation : Série haussière commencée")
             return True, "Bullish sequence started"
+
+        # ----- CRITÈRE 4 : DISPLACEMENT (Déplacement Pur) -----
+        # Body > Moyenne des 5 derniers bodies
+        avg_body_5 = abs(last_candles["close"] - last_candles["open"]).mean()
+        if body > (avg_body_5 * 0.8) and is_bullish:
+             logger.info(f"   ✅ Confirmation : Displacement haussier (Body {body:.1f} > Avg {avg_body_5:.1f})")
+             return True, "Bullish Displacement"
 
         logger.warning(
             f"   ❌ BUY BLOQUÉ : Zone Discount Extrême ({premium_percent:.1f}%) sans confirmation de rebond"

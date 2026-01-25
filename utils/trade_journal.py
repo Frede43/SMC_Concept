@@ -162,7 +162,18 @@ class TradeJournal:
             if silver_bullet: confluences_list.append("Silver_Bullet")
             if smt_signal != 'none': confluences_list.append(f"SMT_{smt_signal}")
             if amd_phase not in ['none', 'waiting']: confluences_list.append(f"AMD_{amd_phase}")
-            if analysis.get('fvgs'): confluences_list.append("FVG")
+            # Detection fine des FVG (A+ ou Standard)
+            fvgs = analysis.get('fvgs', [])
+            if fvgs:
+                # Vérifier si un FVG est marqué 'is_a_plus_setup'
+                is_a_plus = any(f.is_a_plus_setup for f in fvgs if hasattr(f, 'is_a_plus_setup'))
+                confluences_list.append("FVG_A+" if is_a_plus else "FVG")
+            
+            # Detection Breaker Blocks
+            breakers = analysis.get('breaker_blocks', [])
+            if breakers:
+                confluences_list.append("Breaker")
+            
             if analysis.get('ifvgs'): confluences_list.append("iFVG")
         
         data = {

@@ -429,6 +429,7 @@ DASHBOARD_HTML = """
                     <thead>
                         <tr>
                             <th>Symbole</th>
+                            <th>Setup (SMC)</th>
                             <th>Direction</th>
                             <th>Volume</th>
                             <th>Entry</th>
@@ -441,6 +442,7 @@ DASHBOARD_HTML = """
                         {% for pos in positions %}
                         <tr>
                             <td><strong>{{ pos.symbol }}</strong></td>
+                            <td style="font-size: 11px; color: var(--accent-blue);">{{ pos.comment }}</td>
                             <td><span class="direction-badge {{ pos.direction.lower() }}">{{ pos.direction }}</span></td>
                             <td>{{ pos.volume }}</td>
                             <td>{{ "%.5f"|format(pos.entry_price) }}</td>
@@ -460,28 +462,30 @@ DASHBOARD_HTML = """
                 {% endif %}
             </div>
             
-            <!-- Sentinelle Institutionnelle (Nouveau) -->
+            <!-- Macro Contexte (Nouveau Widget Complet) -->
             <div class="card" style="grid-column: span 2;">
                 <div class="card-header">
-                    <span class="card-title">📡 Sentinelle Institutionnelle (DXY & TTA)</span>
+                    <span class="card-title">🌍 Macro Contexte & News (Mode: {{ trading_mode }})</span>
                 </div>
                 <div class="session-grid" style="grid-template-columns: repeat(3, 1fr);">
                     <div class="session-card">
-                        <div class="session-name">Biais DXY (Sentinel)</div>
+                        <div class="session-name">News Source & Status</div>
+                        <div class="session-wr positive">{{ news.source }}</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">
+                            {{ news.high_impact_count }} High Impact à venir
+                        </div>
+                    </div>
+                    <div class="session-card">
+                        <div class="session-name">Prochain Événement</div>
+                        <div class="session-wr neutral" style="font-size: 16px;">{{ news.next_event }}</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">Attention Volatilité</div>
+                    </div>
+                    <div class="session-card">
+                        <div class="session-name">Biais DXY (Risk Off)</div>
                         <div class="session-wr {{ 'positive' if 'Bullish' in dxy_bias else 'negative' if 'Bearish' in dxy_bias else 'neutral' }}">
                             {{ dxy_bias }}
                         </div>
-                        <div style="font-size: 11px; color: var(--text-secondary);">Source: MT5 Real-time</div>
-                    </div>
-                    <div class="session-card">
-                        <div class="session-name">Triple Alignment (TTA)</div>
-                        <div class="session-wr positive">ACTIVÉ</div>
-                        <div style="font-size: 11px; color: var(--text-secondary);">HTF + MTF + LTF Sync</div>
-                    </div>
-                    <div class="session-card">
-                        <div class="session-name">Crypto Sniper Mode</div>
-                        <div class="session-wr positive">80% ELITE</div>
-                        <div style="font-size: 11px; color: var(--text-secondary);">Agnostic Killzone ON</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">VIX & Correlation Guard Active</div>
                     </div>
                 </div>
             </div>
@@ -681,6 +685,8 @@ class DashboardServer:
                 strategies=self._get_strategy_stats(),
                 exposure=self._get_exposure(),
                 dxy_bias=self._get_dxy_bias(),
+                news=self._get_news_info(),
+                trading_mode=self._get_trading_mode(),
                 alerts=self.alerts[-10:],  # 10 dernières alertes
                 last_update=datetime.now().strftime("%H:%M:%S")
             )
@@ -755,9 +761,14 @@ class DashboardServer:
                 tick = mt5.symbol_info_tick(pos.symbol)
                 current_price = tick.bid if pos.type == 0 else tick.ask if tick else pos.price_current
                 
+                # Setup extraction
+                raw_comment = pos.comment if hasattr(pos, 'comment') else ""
+                setup_name = raw_comment.replace("SMC Bot:", "").strip()[:20] # Shorten
+                
                 result.append({
                     'ticket': pos.ticket,
                     'symbol': pos.symbol,
+                    'comment': setup_name if setup_name else "Manual/Unknown",
                     'direction': 'BUY' if pos.type == 0 else 'SELL',
                     'volume': pos.volume,
                     'entry_price': pos.price_open,
@@ -907,6 +918,55 @@ class DashboardServer:
         except:
             return {}
     
+    def _get_news_info(self) -> Dict:
+        """Récupère les infos du news filter depuis le cache."""
+        try:
+            cache_file = Path("data/news_cache.json")
+            if not cache_file.exists():
+                return {'source': 'OFFLINE', 'next_event': 'Aucune donnée', 'high_impact_count': 0}
+                
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                
+            events = data.get('events', [])
+            now = datetime.now()
+            
+            # Prochain événement High
+            upcoming = [e for e in events if datetime.fromisoformat(e['time']) > now]
+            high_impact = [e for e in upcoming if e['impact'] == 'high']
+            
+            next_event = "Aucun"
+            if high_impact:
+                next_event_obj = high_impact[0]
+                time_diff = datetime.fromisoformat(next_event_obj['time']) - now
+                hours = int(time_diff.total_seconds() // 3600)
+                mins = int((time_diff.total_seconds() % 3600) // 60)
+                next_event = f"{next_event_obj['currency']} {next_event_obj['event'][:20]}.. ({hours}h{mins}m)"
+            
+            return {
+                'source': data.get('source', 'Unknown').upper(),
+                'next_event': next_event,
+                'high_impact_count': len(high_impact)
+            }
+        except Exception as e:
+            return {'source': 'ERROR', 'next_event': str(e), 'high_impact_count': 0}
+
+    def _get_trading_mode(self) -> str:
+        """Récupère le mode de trading actif depuis la config."""
+        try:
+            config_path = Path("config/settings.yaml")
+            if config_path.exists():
+                import yaml
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = yaml.safe_load(f)
+                
+                # Détecter le mode actif
+                mode = config.get('general', {}).get('mode', 'DEMO')
+                return mode.upper()
+        except:
+            return "UNKNOWN"
+        return "UNKNOWN"
+
     def _add_alert(self, message: str):
         """Ajoute une alerte."""
         self.alerts.append({
