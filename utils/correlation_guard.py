@@ -143,7 +143,13 @@ class CorrelationGuard:
         # Charger la config personnalisée si disponible
         self._load_custom_groups()
         
-        logger.info(f"🛡️ CorrelationGuard initialisé | Max exposure: {max_exposure_per_currency} lots/currency")
+        # Charger les overrides depuis la config globale (settings.yaml)
+        if self.config and 'correlation_guard' in self.config:
+            cg_settings = self.config['correlation_guard']
+            self.max_exposure_per_currency = cg_settings.get('max_exposure_per_currency', self.max_exposure_per_currency)
+            self.max_positions_per_group = cg_settings.get('max_positions_per_group', self.max_positions_per_group)
+        
+        logger.info(f"🛡️ CorrelationGuard initialisé | Max exposure: {self.max_exposure_per_currency} lots/currency")
     
     def _load_custom_groups(self):
         """Charge les groupes de corrélation personnalisés depuis la config."""

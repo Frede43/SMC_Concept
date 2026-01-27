@@ -309,9 +309,13 @@ class TradeMonitor:
             # Et surtout: ne JAMAIS redescendre le SL
             if optimal_sl > position.sl + (pip_size * 0.5):
                 # Vérifier la distance minimale au prix actuel (Stops Level)
-                stops_level = mt5.symbol_info(symbol).stops_level * mt5.symbol_info(symbol).point
-                if current_price - optimal_sl < stops_level:
-                    return None # Trop proche du prix actuel
+                sym_info = mt5.symbol_info(symbol)
+                if sym_info:
+                    stops_level = sym_info.trade_stops_level * sym_info.point
+                    if current_price - optimal_sl < stops_level:
+                        return None # Trop proche du prix actuel
+                else:
+                    return None
                 
                 success = self._modify_sl(position.ticket, optimal_sl, position.tp)
                 if success:
@@ -339,8 +343,12 @@ class TradeMonitor:
             # SL actuel = 0 signifie pas de SL, donc on peut mettre le nouveau
             if position.sl == 0 or (optimal_sl < position.sl - (pip_size * 0.5)):
                 # Vérifier distance min
-                stops_level = mt5.symbol_info(symbol).stops_level * mt5.symbol_info(symbol).point
-                if optimal_sl - current_price < stops_level:
+                sym_info = mt5.symbol_info(symbol)
+                if sym_info:
+                    stops_level = sym_info.trade_stops_level * sym_info.point
+                    if optimal_sl - current_price < stops_level:
+                        return None
+                else:
                     return None
                     
                 success = self._modify_sl(position.ticket, optimal_sl, position.tp)

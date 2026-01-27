@@ -59,19 +59,22 @@ class MomentumConfirmationFilter:
 
         # ----- CRITÈRE 0 (Pré-requis) : VOLUME SUFFISANT (RVOL) -----
         # Filtre anti-fakeout week-end
+        # ✅ FIX: Utiliser la dernière bougie CLOTURÉE (prev_1) pour le volume
+        # car la bougie actuelle (current) est en formation et a naturellement un volume faible au début
         vol_col = "tick_volume" if "tick_volume" in df.columns else "volume"
         if vol_col in df.columns:
-            current_vol = current[vol_col]
-            # Calcul moyenne mobile volume sur 20 périodes (sur le DF complet)
-            avg_vol = df[vol_col].rolling(20).mean().iloc[-1]
+            prev_vol = prev_1[vol_col]
+            # Calculer la moyenne sur les 20 dernières bougies CLOTURÉES
+            # on prend .iloc[-2] pour exclure la bougie courante qui biaiserait la moyenne à la baisse
+            avg_vol = df[vol_col].rolling(20).mean().iloc[-2]
 
             if avg_vol > 0:
-                rvol = current_vol / avg_vol
+                rvol = prev_vol / avg_vol
                 if rvol < 0.7:
                     logger.warning(
-                        f"   ❌ SELL BLOQUÉ : Volume trop faible (RVOL: {rvol:.2f} < 0.7) - Faux mouvement probable"
+                        f"   ❌ SELL BLOQUÉ : Volume trop faible sur bougie précédente (RVOL: {rvol:.2f} < 0.7) - Faux mouvement probable"
                     )
-                    return False, f"❌ Low Volume (RVOL: {rvol:.2f})"
+                    return False, f"❌ Low Volume (Prev RVOL: {rvol:.2f})"
 
         # ----- CRITÈRE 1 : Bougie de Rejet (Wick supérieur dominant) -----
         upper_wick = current["high"] - max(current["open"], current["close"])
@@ -155,16 +158,16 @@ class MomentumConfirmationFilter:
         # ----- CRITÈRE 0 (Pré-requis) : VOLUME SUFFISANT (RVOL) -----
         vol_col = "tick_volume" if "tick_volume" in df.columns else "volume"
         if vol_col in df.columns:
-            current_vol = current[vol_col]
-            avg_vol = df[vol_col].rolling(20).mean().iloc[-1]
+            prev_vol = prev_1[vol_col]
+            avg_vol = df[vol_col].rolling(20).mean().iloc[-2]
 
             if avg_vol > 0:
-                rvol = current_vol / avg_vol
+                rvol = prev_vol / avg_vol
                 if rvol < 0.7:
                     logger.warning(
-                        f"   ❌ BUY BLOQUÉ : Volume trop faible (RVOL: {rvol:.2f} < 0.7) - Faux mouvement probable"
+                        f"   ❌ BUY BLOQUÉ : Volume trop faible sur bougie précédente (RVOL: {rvol:.2f} < 0.7) - Faux mouvement probable"
                     )
-                    return False, f"❌ Low Volume (RVOL: {rvol:.2f})"
+                    return False, f"❌ Low Volume (Prev RVOL: {rvol:.2f})"
 
         # ----- CRITÈRE 1 : Bougie de Rebond (Wick inférieur dominant) -----
         upper_wick = current["high"] - max(current["open"], current["close"])

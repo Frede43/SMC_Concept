@@ -1773,7 +1773,7 @@ class SMCStrategy:
         # 🛡️ FILTRE DE SCORE MINIMAL (PROFIL SENSITIVITY)
         smc_config = symbol_config.get("smc_settings", {})
         # Utiliser self.min_confidence (0.65 -> 65) comme fallback
-        global_min = self.min_confidence * 100
+        global_min = self.min_confidence
         min_conf_score = smc_config.get("min_confidence_score", global_min)
 
         # =========================================================================
