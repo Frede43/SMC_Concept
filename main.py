@@ -109,6 +109,11 @@ class SMCTradingBot:
         self.last_trades_file = "last_trades.json"
         self.last_trade_times = self._load_last_trades()
         
+        # 🔴 FIX #1: ANTI-OVERTRADING - Tracking quotidien
+        self.daily_trades_count = 0
+        self.daily_trades_by_symbol = {}  # {symbol: count}
+        self.last_trade_date = datetime.now().date()
+        
         self.timeframes = self.config.get('timeframes', {})
         self.ltf = self.timeframes.get('ltf', 'M15')
         self.mtf = self.timeframes.get('mtf', 'H4')   # ✅ AJOUT MTF pour analyse structure
@@ -596,6 +601,34 @@ class SMCTradingBot:
             logger.debug(f"Analyse de {symbol}...")
             
             # =========================================================================
+            # 🔴 FIX #1: ANTI-OVERTRADING - Vérification stricte
+            # =========================================================================
+            current_date = datetime.now().date()
+            if self.last_trade_date != current_date:
+                # Reset counters for new day
+                self.daily_trades_count = 0
+                self.daily_trades_by_symbol = {}
+                self.last_trade_date = current_date
+            
+            risk_cfg = self.config.get('risk', {})
+            max_daily_trades = risk_cfg.get('max_trades_per_day', 3)
+            max_daily_symbol_trades = risk_cfg.get('max_trades_per_symbol_per_day', 2)
+            
+            # Check global limit
+            if self.daily_trades_count >= max_daily_trades:
+                # Log only once per hour to avoid spam
+                if datetime.now().minute == 0:
+                    logger.warning(f"🛑 GLOBAL TRADING LIMIT REACHED ({self.daily_trades_count}/{max_daily_trades} trades today). Bot is resting.")
+                return
+                
+            # Check symbol limit
+            symbol_count = self.daily_trades_by_symbol.get(symbol, 0)
+            if symbol_count >= max_daily_symbol_trades:
+                if datetime.now().minute % 30 == 0:
+                    logger.warning(f"🛑 SYMBOL TRADING LIMIT REACHED for {symbol} ({symbol_count}/{max_daily_symbol_trades}). Skipping.")
+                return
+
+            # =========================================================================
             # 🌑 MANUAL BLACKOUT CALENDAR (INSTITUTIONAL RISK MANAGEMENT)
             # Protection contre les événements majeurs (BoJ, FOMC, NFP)
             # =========================================================================
@@ -923,6 +956,11 @@ class SMCTradingBot:
                         self.last_trade_times[symbol] = time.time()  # ✅ Activation du cooldown anti-doublon
                         self._save_last_trades()                     # ✅ Persistance immédiate sur disque
                         self.risk_manager.on_trade_opened(symbol)
+                        
+                        # 🔴 FIX #1: Mise à jour des compteurs anti-overtrading
+                        self.daily_trades_count += 1
+                        self.daily_trades_by_symbol[symbol] = self.daily_trades_by_symbol.get(symbol, 0) + 1
+                        logger.info(f"📊 Daily count: {self.daily_trades_count}/{max_daily_trades} | {symbol}: {self.daily_trades_by_symbol[symbol]}/{max_daily_symbol_trades}")
                         
                         # 📢 NOTIFICATION DISCORD, TELEGRAM & JOURNAL
                         setup_info = ", ".join(signal.reasons)

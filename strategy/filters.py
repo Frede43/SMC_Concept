@@ -89,6 +89,16 @@ class TradingFilters:
                 passed = False
                 reasons.append(f"Spread trop élevé: {current_spread} > {max_spread}")
 
+        # 🔴 FIX #2: ADR EXHAUSTION STRICT FILTER
+        advanced_config = self.config.get("advanced", {})
+        if advanced_config.get("strict_adr_block", False) and df is not None and len(df) > 20:
+            adr_ok, adr_msg = self.check_adr_exhaustion(df, symbol)
+            if not adr_ok:
+                passed = False
+                reasons.append(adr_msg)
+            else:
+                reasons.append(adr_msg)
+
         # Volatility filter
         if self.config.get("volatility", {}).get("enabled", False):
             vol_ok, vol_msg = self.check_volatility(df)
@@ -202,6 +212,55 @@ class TradingFilters:
             return True
 
         return ltf_bias == htf_bias
+
+    def check_adr_exhaustion(self, df: pd.DataFrame, symbol: str = None) -> Tuple[bool, str]:
+        """
+        🔴 FIX #2: Vérifie si le marché a épuisé son Average Daily Range (ADR).
+        
+        Si ADR > 100%, le marché a déjà parcouru sa range quotidienne moyenne.
+        Cela signifie qu'il n'y a plus de "carburant" pour expansion.
+        
+        Returns:
+            (passed, message): True si ADR < 100%, False sinon
+        """
+        try:
+            advanced_config = self.config.get("advanced", {})
+            max_adr_percent = advanced_config.get("adr_max_percent", 100.0)
+            
+            # Calculer le range du jour actuel (high - low)
+            current_day_range = df['high'].iloc[-1] - df['low'].iloc[-1]
+            
+            # Calculer l'ADR sur les 20 derniers jours
+            if len(df) < 20:
+                return True, "✓ Données ADR insuffisantes"
+            
+            # Daily ranges sur les 20 derniers jours
+            daily_ranges = df['high'].tail(20) - df['low'].tail(20)
+            average_daily_range = daily_ranges.mean()
+            
+            if average_daily_range == 0:
+                return True, "✓ ADR = 0 (données invalides)"
+            
+            # Calculer le % d'épuisement
+            adr_percent = (current_day_range / average_daily_range) * 100
+            
+            # Obtenir pip size pour affichage
+            pip_size = 0.01 if (symbol and "JPY" in symbol.upper()) else 0.0001
+            adr_pips = average_daily_range / pip_size if pip_size > 0 else 0
+            current_pips = current_day_range / pip_size if pip_size > 0 else 0
+            
+            if adr_percent > max_adr_percent:
+                msg = f"🛑 ADR ÉPUISÉ: {adr_percent:.1f}% (Max: {max_adr_percent}%) - Marché stagnant - BLOQUÉ"
+                logger.warning(msg)
+                logger.debug(f"   ADR moyen: {adr_pips:.1f} pips | Aujourd'hui: {current_pips:.1f} pips")
+                return False, msg
+            else:
+                msg = f"✓ ADR OK: {adr_percent:.1f}% ({current_pips:.0f}/{adr_pips:.0f} pips)"
+                return True, msg
+                
+        except Exception as e:
+            logger.error(f"Erreur calcul ADR: {e}")
+            return True, "✓ ADR check skipped (error)"
 
     def _get_symbol_config(self, symbol: str) -> Dict:
         """Récupère la config d'un symbole."""

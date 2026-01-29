@@ -538,19 +538,35 @@ class SMCStrategy:
 
         # 10. iFVG Signal (Calculé AVANT le biais pour permettre l'override)
         ifvg_signal, ifvg_confidence, ifvg_reason = self.fvg_detector.get_ifvg_signal(
-            current_price, trend_str
+            current_price,            trend_str
         )
 
-        # --- NOUVEAU: Momentum Analysis for State Machine ---
-        # Calcul RSI rapide pour alimenter la machine d'état
-        delta = df["close"].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / loss
-        rsi_series = 100 - (100 / (1 + rs))
-        current_rsi = rsi_series.iloc[-1]
+        # --- 🆕 BOS STRENGTH CALCULATION (100% SMC - Remplace RSI) ---
+        # Mesure la force du dernier Break of Structure
+        # Force = Distance entre Swing High et Swing Low / ATR
+        # > 2.0 ATR = Forte impulsion institutionnelle
+        # < 1.0 ATR = Faible impulsion
+        atr_14 = df['high'].rolling(14).max() - df['low'].rolling(14).min()
+        atr_14_mean = atr_14.rolling(14).mean().iloc[-1]
+        
+        last_hh = structure.get("last_hh")
+        last_ll = structure.get("last_ll")
+        
+        if last_hh and last_ll and atr_14_mean > 0:
+            hh_price = last_hh.price if hasattr(last_hh, "price") else last_hh
+            ll_price = last_ll.price if hasattr(last_ll, "price") else last_ll
+            bos_strength = abs(hh_price - ll_price) / atr_14_mean
+        else:
+            bos_strength = 0.0
+        
+        # Classifier le régime de marché basé sur BOS Strength
+        market_regime = "WEAK"
+        if bos_strength > 2.0:
+            market_regime = "STRONG"
+        elif bos_strength > 1.0:
+            market_regime = "MODERATE"
 
-        # Calcul du biais avec exception iFVG supportée
+        # Calcul du biais avec BOS Strength au lieu du RSI
         combined_bias = self._calculate_combined_bias(
             trend,
             pd_zone,
@@ -558,7 +574,7 @@ class SMCStrategy:
             sweep_direction,
             ifvg_signal,
             ifvg_confidence,
-            rsi_value=current_rsi,
+            bos_strength=bos_strength,  # ✅ Remplace rsi_value
         )
 
         # 9. NY Silver Bullet Analysis
@@ -567,13 +583,13 @@ class SMCStrategy:
             df, structure=structure, pdh=pdl_info.get("pdh"), pdl=pdl_info.get("pdl")
         )
 
+        # 🆕 MOMENTUM DATA (100% SMC - BOS Strength)
         momentum_data = {
-            "rsi": current_rsi,
-            "is_extreme": current_rsi > 70 or current_rsi < 30,
-            "reversal_bias": (
-                "SELL" if current_rsi > 70 else ("BUY" if current_rsi < 30 else "NEUTRAL")
-            ),
-            "context": "BULLISH" if current_rsi > 50 else "BEARISH",
+            "bos_strength": bos_strength,
+            "market_regime": market_regime,
+            "is_strong_impulse": bos_strength > 2.0,
+            "is_weak_structure": bos_strength < 1.0,
+            "context": market_regime,
         }
 
         # 11. AMD Analysis (Phase 3 - Accumulation, Manipulation, Distribution)
@@ -818,28 +834,28 @@ class SMCStrategy:
         sweep_direction: str = None,
         ifvg_signal: str = "NEUTRAL",
         ifvg_confidence: float = 0.0,
-        rsi_value: float = 50.0,
+        bos_strength: float = 1.0,  # ✅ Remplace rsi_value (100% SMC)
     ) -> str:
         """
         Calcule le biais combiné basé sur tendance + zone Premium/Discount.
 
-        ✅ NOUVEAU: Classification Régime de Marché (Force Trend en Impulsion)
+        ✅ NOUVEAU: Classification Régime de Marché (Force BOS en Impulsion)
         ✅ v2.3: Filtre strict - Vérifier que le sweep est dans la bonne zone
         ✅ v2.5: iFVG Haute Confiance Exception (Assouplissement zone)
+        ✅ v3.0: BOS Strength remplace RSI (100% SMC Pure)
         """
         # --- 1. FILTRE RÉGIME DE MARCHÉ (Priorité Absolue) ---
-        # Si momentum extrême dans le sens de la tendance = IMPULSION FORTE
-        # On interdit tout Reversal (même si Sweep/Discount).
+        # Si BOS Strength très fort dans le sens de la tendance = IMPULSION FORTE
+        # On signale les reversals risqués.
 
-        if trend == Trend.BEARISH and rsi_value < 30:
-            logger.warning(f"🚨 MARKET REGIME: IMPULSIVE DOWN (RSI={rsi_value:.1f}).")
+        if trend == Trend.BEARISH and bos_strength > 2.5:
+            logger.warning(f"🚨 MARKET REGIME: IMPULSIVE DOWN (BOS={bos_strength:.1f} ATR).")
             if sweep_direction == "BUY":
                 logger.warning(f"⚠️ Reversal BUY risqué vs Momentum Impulsif.")
                 # On ne bloque plus totalement, mais on flaggue pour réduction de risque
-                # return "NEUTRAL" -> CHANGÉ en autorisation sous haute surveillance
 
-        if trend == Trend.BULLISH and rsi_value > 70:
-            logger.warning(f"🚨 MARKET REGIME: IMPULSIVE UP (RSI={rsi_value:.1f}).")
+        if trend == Trend.BULLISH and bos_strength > 2.5:
+            logger.warning(f"🚨 MARKET REGIME: IMPULSIVE UP (BOS={bos_strength:.1f} ATR).")
             if sweep_direction == "SELL":
                 logger.warning(f"⚠️ Reversal SELL risqué vs Momentum Impulsif.")
 
@@ -1098,23 +1114,23 @@ class SMCStrategy:
                 reasons.append(f"Sweep override biais NEUTRAL → {sweep_direction}")
                 logger.info(f"[{symbol}] Sweep override: NEUTRAL → {sweep_direction}")
 
-        # 🛑 RSI EXTREME FILTER (Optimisé)
-        # ✅ AMÉLIORATION: Filtre seulement les zones de SURCHAUFFE extrême
-        # Le momentum fort (RSI 55-78) est en fait POSITIF pour les trades SMC
-        # Basé sur backtest: Trades momentum (RSI 55-70) ont WR 68% vs 62% pour RSI neutre
-        rsi_val = analysis.get("momentum", {}).get("rsi", 50)
+        # 🛑 BOS STRENGTH FILTER (100% SMC - Remplace RSI EXTREME)
+        # ✅ AMÉLIORATION: Filtre les trades contre structure très forte
+        # BOS Strength > 2.5 ATR dans la direction opposée = Trade contre-tendance risqué
+        bos_val = analysis.get("momentum", {}).get("bos_strength", 1.0)
+        market_regime = analysis.get("momentum", {}).get("market_regime", "MODERATE")
 
-        if bias == "BUY" and rsi_val > 78:
-            # Surchauffe extrême - Risque de correction immédiate
-            logger.debug(f"⚠️ RSI EXTREME: {rsi_val:.1f} > 78 - Pénalité appliquée")
+        if bias == "BUY" and trend == Trend.BEARISH and bos_val > 2.5:
+            # Trade BUY contre structure bearish très forte
+            logger.debug(f"⚠️ BOS STRENGTH: {bos_val:.1f} ATR > 2.5 - Trade contre structure forte")
             confidence -= 15  # Pénalité au lieu de veto total
-            reasons.append(f"⚠️ RSI Surchauffe ({rsi_val:.1f}) - Confiance réduite")
+            reasons.append(f"⚠️ Contre BOS Fort ({bos_val:.1f} ATR) - Confiance réduite")
 
-        if bias == "SELL" and rsi_val < 22:
-            # Survente extrême - Risque de rebond immédiat
-            logger.debug(f"⚠️ RSI EXTREME: {rsi_val:.1f} < 22 - Pénalité appliquée")
-            confidence -= 15  # Pénalité au lieu de veto total
-            reasons.append(f"⚠️ RSI Survente ({rsi_val:.1f}) - Confiance réduite")
+        if bias == "SELL" and trend == Trend.BULLISH and bos_val > 2.5:
+            # Trade SELL contre structure bullish très forte
+            logger.debug(f"⚠️ BOS STRENGTH: {bos_val:.1f} ATR > 2.5 - Trade contre structure forte")
+            confidence -= 15
+            reasons.append(f"⚠️ Contre BOS Fort ({bos_val:.1f} ATR) - Confiance réduite")
 
         # 3. State Machine Confirmation (Sync Strategy with State Machine)
         smc_state = analysis.get("state_machine", {})
@@ -1190,25 +1206,25 @@ class SMCStrategy:
                 return None
 
         # ============================================
-        # 🆕 FILTRE RÉGIME IMPULSIF AMÉLIORÉ
+        # 🆕 FILTRE RÉGIME IMPULSIF AMÉLIORÉ (100% SMC)
         # Bloque les trades contre-tendance pendant les marchés impulsifs
         # SAUF si exceptions validées (SMT divergence, Sweep+FVG)
         # ============================================
         momentum = analysis.get("momentum", {}) if analysis else {}
-        current_rsi = momentum.get("rsi", 50.0)
+        current_bos = momentum.get("bos_strength", 1.0)
+        market_regime = momentum.get("market_regime", "MODERATE")
 
         # Récupérer la configuration du filtre impulsif
         impulsive_config = self.config.get("risk", {}).get("impulsive_regime_filter", {})
         filter_enabled = impulsive_config.get("enabled", True)
-        rsi_low = impulsive_config.get("rsi_extreme_low", 25)
-        rsi_high = impulsive_config.get("rsi_extreme_high", 75)
+        bos_strong_threshold = impulsive_config.get("bos_strong_threshold", 2.5)  # ✅ Remplace rsi thresholds
         block_counter = impulsive_config.get("block_counter_trend", True)
         allow_smt = impulsive_config.get("allow_with_smt_divergence", True)
         allow_sweep_fvg = impulsive_config.get("allow_with_sweep_fvg", True)
 
         if filter_enabled and block_counter:
-            is_impulsive_down = current_rsi < rsi_low  # Marché en chute libre
-            is_impulsive_up = current_rsi > rsi_high  # Marché en surchauffe
+            is_impulsive_down = (trend == Trend.BEARISH and current_bos > bos_strong_threshold)
+            is_impulsive_up = (trend == Trend.BULLISH and current_bos > bos_strong_threshold)
 
             # Vérifier les exceptions
             has_smt_exception = False
@@ -1270,7 +1286,7 @@ class SMCStrategy:
             if is_impulsive_down and bias == "BUY":
                 if not (has_smt_exception or has_sweep_fvg_exception or strong_ifvg_exception):
                     logger.warning(
-                        f"🚫 [IMPULSIVE FILTER] {symbol} RSI={current_rsi:.1f} < {rsi_low} - BUY bloqué (Chute libre)"
+                        f"🚫 [IMPULSIVE FILTER] {symbol} BOS={current_bos:.1f} > {bos_strong_threshold} - BUY bloqué (Structure bearish forte)"
                     )
                     logger.warning(
                         f"   → Exceptions: SMT={has_smt_exception}, Sweep+FVG={has_sweep_fvg_exception}, Gold={strong_ifvg_exception}"
@@ -1278,13 +1294,13 @@ class SMCStrategy:
                     return None
                 else:
                     logger.info(
-                        f"✅ [IMPULSIVE FILTER] {symbol} BUY autorisé malgré RSI={current_rsi:.1f} (Exception active)"
+                        f"✅ [IMPULSIVE FILTER] {symbol} BUY autorisé malgré BOS={current_bos:.1f} (Exception active)"
                     )
 
             if is_impulsive_up and bias == "SELL":
                 if not (has_smt_exception or has_sweep_fvg_exception):
                     logger.warning(
-                        f"🚫 [IMPULSIVE FILTER] {symbol} RSI={current_rsi:.1f} > {rsi_high} - SELL bloqué (Surchauffe)"
+                        f"🚫 [IMPULSIVE FILTER] {symbol} BOS={current_bos:.1f} > {bos_strong_threshold} - SELL bloqué (Structure bullish forte)"
                     )
                     logger.warning(
                         f"   → Exceptions: SMT={has_smt_exception}, Sweep+FVG={has_sweep_fvg_exception}"
@@ -1292,7 +1308,7 @@ class SMCStrategy:
                     return None
                 else:
                     logger.info(
-                        f"✅ [IMPULSIVE FILTER] {symbol} SELL autorisé malgré RSI={current_rsi:.1f} (Exception active)"
+                        f"✅ [IMPULSIVE FILTER] {symbol} SELL autorisé malgré BOS={current_bos:.1f} (Exception active)"
                     )
 
         # Initialiser le bulletin de décision

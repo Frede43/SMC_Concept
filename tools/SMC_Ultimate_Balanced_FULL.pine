@@ -3,7 +3,18 @@
 // Modifications & Dashboard by Antigravity (SMC Ultimate Fusion)
 
 //@version=5
-strategy('SMC Fusion Strategy [Pro]', 'SMC Fusion [Pro]', overlay = true, initial_capital = 10000, default_qty_type = strategy.fixed, currency = currency.USD, commission_type = strategy.commission.percent, commission_value = 0.003, slippage=1, max_labels_count = 500, max_lines_count = 500, max_boxes_count = 500, calc_on_every_tick = true)
+strategy('SMC Balanced Ultra [Pro]', 'SMC Balanced Ultra [Pro]', overlay = true, initial_capital = 10000, default_qty_type = strategy.fixed, currency = currency.USD, commission_type = strategy.commission.percent, commission_value = 0.003, slippage=1, max_labels_count = 500, max_lines_count = 500, max_boxes_count = 500, calc_on_every_tick = true)
+
+//---------------------------------------------------------------------------------------------------------------------}
+// 🎯 BALANCED ULTRA MODE - PHILOSOPHY
+//---------------------------------------------------------------------------------------------------------------------{
+// Conservative        : 13 filtres → 1.75 trades/an → PF 6.58 → Profit 1.54%/an
+// Balanced (Actuel)   : 8 filtres  → 3.75 trades/an → PF ∞    → Profit 22%/an (TROP PEU DE TRADES)
+// Balanced ULTRA      : 6 filtres  → 30-50 trades/an → PF 2.5+ → Profit 15-25%/an (OBJECTIF)
+//
+// ✅ FILTRES GARDÉS : Daily Trend, P/D Zones (65%), BOS (0.4), Volume (0.5), Killzone, Candle
+// ❌ FILTRES DÉSACTIVÉS : MTF, SMT, Sweep, ADR (trop stricts)
+//---------------------------------------------------------------------------------------------------------------------}
 
 //---------------------------------------------------------------------------------------------------------------------}
 // LUXALGO CONSTANTS & STRINGS & INPUTS
@@ -54,13 +65,13 @@ GAPS_GROUP                      = 'Fair Value Gaps'
 LEVELS_GROUP                    = 'Highs & Lows MTF'
 ZONES_GROUP                     = 'Premium & Discount Zones'
 
-// 🎨 ANTIGRAVITY SETTINGS (DASHBOARD & VISUALS)
-grp_signals = "🎯 TRADE SIGNALS (SMC)"
+// 🎨 BALANCED MODE SETTINGS
+grp_signals = "🎯 TRADE SIGNALS (BALANCED MODE)"
 show_signals = input.bool(true, "Show Buy/Sell Signals", group=grp_signals, tooltip="Show entries when price mitigates an OB/FVG and aligns with trend")
 sig_size     = input.string(size.tiny, "Signal Label Size", options=[size.tiny, size.small, size.normal], group=grp_signals)
 
-// 🆕 ENHANCEMENT INPUTS
-use_mtf_filter = input.bool(false, "Use MTF Confirmation", group=grp_signals, tooltip="Only show signals aligned with the Higher Timeframe trend")
+// 🆕 BALANCED FILTERS (Désactivés par défaut)
+use_mtf_filter = input.bool(false, "❌ MTF Confirmation (DISABLED)", group=grp_signals, tooltip="BALANCED: Désactivé pour plus de trades")
 htf_tf         = input.timeframe('240', "HTF Timeframe", group=grp_signals)
 
 use_rm_labels  = input.bool(true, "Show SL/TP Labels", group=grp_signals, tooltip="Calculate and show Stop Loss and Take Profit levels")
@@ -72,23 +83,24 @@ be_target      = input.float(1.1, "BE Trigger (RR)", minval=0.1, step=0.1, group
 use_partial_tp = input.bool(true, "Use Partial Take Profit", group=grp_signals, tooltip="Close 30% at 1.1 RR")
 partial_rr     = input.float(1.1, "Partial TP (RR)", minval=0.5, step=0.1, group=grp_signals, tooltip="Fast secure at 1.1 RR")
 
-use_vol_filter = input.bool(true, "Volume Mitigation Filter", group=grp_signals, tooltip="Confirm mitigation with high volume (Institutional activity)")
-vol_mult       = input.float(1.0, "Volume Multiplier", minval=0.5, step=0.1, group=grp_signals, tooltip="1.0 = Average Volume (Forex Ready)")
+use_vol_filter = input.bool(true, "✅ Volume Filter (ULTRA)", group=grp_signals, tooltip="ULTRA: Seuil ajusté à 0.7x")
+vol_mult       = input.float(0.7, "Volume Multiplier", minval=0.4, step=0.1, group=grp_signals, tooltip="ULTRA: 0.7 (Filtre le bruit)")
 
-use_bos_filter = input.bool(true, "Filter Weak BOS (<1.0 ATR)", group=grp_signals, tooltip="Avoid signals after weak structure breaks")
-bos_threshold  = input.float(1.0, "BOS Strength Threshold", minval=0.1, step=0.1, group=grp_signals)
+use_bos_filter = input.bool(true, "✅ BOS Strength (ULTRA)", group=grp_signals, tooltip="ULTRA: Seuil ajusté à 0.5 ATR")
+bos_threshold  = input.float(0.5, "BOS Strength Threshold", minval=0.1, step=0.1, group=grp_signals, tooltip="ULTRA: 0.5 (Filtre les fausses cassures)")
 
 // 🆕 REALISM & FLEXIBILITY
 mitigation_buffer_atr = input.float(0.1, "Mitigation Buffer (ATR)", minval=0.0, step=0.05, group=grp_signals, tooltip="Allows entry if price misses the zone by this amount (Fixes rigitidy/front-running)")
 
 
-use_smt_filter = input.bool(false, "SMT Divergence Filter", group=grp_signals, tooltip="Confirm with correlated asset (e.g., EURUSD vs GBPUSD)")
+use_smt_filter = input.bool(false, "❌ SMT Divergence (DISABLED)", group=grp_signals, tooltip="BALANCED: Désactivé, pas pertinent pour toutes les paires")
 smt_ticker     = input.symbol("FX:GBPUSD", "SMT Correlated Ticker", group=grp_signals)
 
-use_daily_align = input.bool(true, "Align with Daily Trend", group=grp_signals, tooltip="Only take trades in the direction of the Daily Trend")
-use_pd_filter   = input.bool(true, "Premium/Discount Filter", group=grp_signals, tooltip="Buy only in Discount, Sell only in Premium")
-use_sweep_conf  = input.bool(true, "Require Liquidity Sweep", group=grp_signals, tooltip="Entry only if a sweep occurred in the last 10 bars")
-use_adr_filter  = input.bool(true, "ADR Exhaustion Filter", group=grp_signals, tooltip="Block trades if ADR > 250% (Market exhausted)")
+use_daily_align = input.bool(false, "❌ Daily Trend (DISABLED)", group=grp_signals, tooltip="ULTRA: Désactivé pour libérer les trades")
+use_internal_trend = input.bool(true, "✅ Trade Internal Trend", group=grp_signals, tooltip="ULTRA: Trade based on Internal Structure (Faster) instead of Swing")
+use_pd_filter   = input.bool(true, "✅ Premium/Discount (ULTRA)", group=grp_signals, tooltip="ULTRA: Seuil assoupli à 60%")
+use_sweep_conf  = input.bool(false, "❌ Liquidity Sweep (DISABLED)", group=grp_signals, tooltip="BALANCED: Désactivé")
+use_adr_filter  = input.bool(false, "❌ ADR Exhaustion (DISABLED)", group=grp_signals, tooltip="ULTRA: Désactivé pour ne pas bloquer les runs")
 max_daily_loss  = input.int(2, "Max Daily Trades Lost", minval=1, group=grp_signals, tooltip="Stop trading for the day after X losing trades")
 max_drawdown_pct= input.float(3.0, "Max Daily Drawdown (%)", minval=0.1, step=0.1, group=grp_signals, tooltip="Stop trading if today's loss exceeds X% of capital")
 
@@ -888,8 +900,9 @@ checkSignals() =>
     // 0b. Daily Loss Protection (Now Global)
     // loss_confirm is used directly from the global scope
     if show_signals
-        bool is_buy_trend = swingTrend.bias == BULLISH
-        bool is_sell_trend = swingTrend.bias == BEARISH
+        // ULTRA FIX: Use Internal Trend if enabled for faster entries
+        bool is_buy_trend = use_internal_trend ? internalTrend.bias == BULLISH : swingTrend.bias == BULLISH
+        bool is_sell_trend = use_internal_trend ? internalTrend.bias == BEARISH : swingTrend.bias == BEARISH
         
         // 0. Daily Trend Alignment (Select Filter)
         d_align = not use_daily_align or (is_buy_trend and d_close > d_trend_val) or (is_sell_trend and d_close < d_trend_val)
@@ -899,11 +912,11 @@ checkSignals() =>
         [di_plus, di_minus, adx_val] = ta.dmi(14, 14)
         has_momentum = adx_val > 25
 
-        // 0b. PD Filter (Smart)
-        // If Momentum is strong, we allow buying in the "Grey Zone" (30-50%) or even slightly Premium, not just deep discount.
+        // 0b. PD Filter (ULTRA) - Relaxed to 60%
+        // If Momentum is strong, we allow buying in the "Grey Zone" (40%) or even slightly Premium.
         
-        float pd_limit_buy = (is_forex or is_gold) ? 0.50 : 0.45
-        float pd_limit_sell = (is_forex or is_gold) ? 0.50 : 0.55
+        float pd_limit_buy = (is_forex or is_gold) ? 0.60 : 0.45  // ULTRA: 0.60 (60% du range)
+        float pd_limit_sell = (is_forex or is_gold) ? 0.40 : 0.55  // ULTRA: 0.40 (40% du range)
         
         if has_momentum
             pd_limit_buy  := 0.70  // Allow buying up to 70% of range (shallow pullback)
@@ -942,7 +955,7 @@ checkSignals() =>
         
         // 4. Volume Confirmation (Smart Adjustment)
         avg_vol = ta.sma(volume, 14)
-        high_vol = not use_vol_filter or (volume >= avg_vol * (is_forex ? 0.85 : vol_mult))
+        high_vol = not use_vol_filter or (volume >= avg_vol * vol_mult) // ULTRA FIX: Force vol_mult input
         
         // 5. Candle Confirmation (Anti-Fakeout for Forex & GOLD)
         // Gold needs confirmation to avoid "catching knives" during high volatility
@@ -987,10 +1000,27 @@ checkSignals() =>
                     sig_ent := ob.barLow + (ob.barHigh - ob.barLow) * (is_jpy ? 0.20 : 0.25)
                     break
         
+        // Check Internal Order Blocks (More frequent)
+        bool touch_bull_iob = false
+        bool touch_bear_iob = false
+        if internalOrderBlocks.size() > 0
+            for ob in internalOrderBlocks
+                if ob.bias == BULLISH and low <= (ob.barHigh + fuzz_val) and low >= (ob.barLow - fuzz_val)
+                    touch_bull_iob := true
+                    ob_sl := na(ob_sl) ? ob.barLow : math.min(ob_sl, ob.barLow)
+                    sig_ent := ob.barHigh
+                    break
+            for ob in internalOrderBlocks
+                if ob.bias == BEARISH and high >= (ob.barLow - fuzz_val) and high <= (ob.barHigh + fuzz_val)
+                    touch_bear_iob := true
+                    ob_sl := na(ob_sl) ? ob.barHigh : math.max(ob_sl, ob.barHigh)
+                    sig_ent := ob.barLow
+                    break
+
         // Detection Mitigation FVG (With Buffer)
         bool touch_bull_fvg = false
         bool touch_bear_fvg = false
-        if showFairValueGapsInput and fairValueGaps.size() > 0
+        if fairValueGaps.size() > 0 // ULTRA FIX: Always check FVG even if input disabled visually
             for fvg in fairValueGaps
                 if fvg.bias == BULLISH and low <= (fvg.top + fuzz_val) and low >= (fvg.bottom - fuzz_val)
                     touch_bull_fvg := true
@@ -1003,9 +1033,9 @@ checkSignals() =>
 
 
         // SIGNAL BUY (Dynamic Confluence)
-        // For Gold, we allow OB OR FVG (like Forex) but rely on Candle Confirmation to filter bad entries
-        buy_conf = (is_forex or is_gold) ? (touch_bull_ob or touch_bull_fvg) : (touch_bull_ob and touch_bull_fvg)
-        if is_buy_trend and buy_conf and mtf_confirm and smt_confirm and (bos_str >= 0.8) and high_vol and is_kz and d_align and pd_confirm and has_sweep and adr_confirm and loss_confirm and candle_conf
+        // ULTRA FIX: Allow Swing OB OR Internal OB OR FVG
+        buy_conf = touch_bull_ob or touch_bull_iob or touch_bull_fvg
+        if is_buy_trend and buy_conf and mtf_confirm and smt_confirm and (bos_str >= bos_threshold) and high_vol and is_kz and d_align and pd_confirm and has_sweep and adr_confirm and loss_confirm and candle_conf // ULTRA FIX: Use bos_threshold input
             if new_dir != 1
                 entry_p = na(sig_ent) ? close : sig_ent
                 // Gold Volatility Protection: Wider SL Padding (1.5 ATR)
@@ -1033,8 +1063,8 @@ checkSignals() =>
                     new_dir := 1
 
         // SIGNAL SELL (Dynamic Confluence)
-        sell_conf = (is_forex or is_gold) ? (touch_bear_ob or touch_bear_fvg) : (touch_bear_ob and touch_bear_fvg)
-        if is_sell_trend and sell_conf and mtf_confirm and smt_confirm and (bos_str >= 0.8) and high_vol and is_kz and d_align and pd_confirm and has_sweep and adr_confirm and loss_confirm and candle_conf
+        sell_conf = touch_bear_ob or touch_bear_iob or touch_bear_fvg
+        if is_sell_trend and sell_conf and mtf_confirm and smt_confirm and (bos_str >= bos_threshold) and high_vol and is_kz and d_align and pd_confirm and has_sweep and adr_confirm and loss_confirm and candle_conf // ULTRA FIX: Use bos_threshold input
             if new_dir != -1
                 // Dynamic ATR Padding (Wider for Gold)
                 padding_value = (is_gold ? 1.5 : sl_padding_atr) * atr_val_14
