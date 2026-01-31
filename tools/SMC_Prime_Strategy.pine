@@ -68,7 +68,7 @@ ZONES_GROUP                     = 'Premium & Discount Zones'
 // 🎨 BALANCED MODE SETTINGS
 grp_signals = "🎯 TRADE SIGNALS (BALANCED MODE)"
 show_signals = input.bool(true, "Show Buy/Sell Signals", group=grp_signals, tooltip="Show entries when price mitigates an OB/FVG and aligns with trend")
-sig_size     = input.string(size.small, "Signal Label Size", options=[size.tiny, size.small, size.normal], group=grp_signals)
+sig_size     = input.string(size.tiny, "Signal Label Size", options=[size.tiny, size.small, size.normal], group=grp_signals)
 
 // 🆕 BALANCED FILTERS (Désactivés par défaut)
 use_mtf_filter = input.bool(false, "❌ MTF Confirmation (DISABLED)", group=grp_signals, tooltip="BALANCED: Désactivé pour plus de trades")
@@ -482,20 +482,12 @@ drawOrderBlocks(bool internal = false) =>
         array<orderBlock> parsedOrdeBlocks  = orderBlocks.slice(0, math.min(maxOrderBlocks,orderBlocksSize))
         array<box> b_oxes                   = internal ? internalOrderBlocksBoxes : swingOrderBlocksBoxes        
         for [index,eachOrderBlock] in parsedOrdeBlocks
-            // Define Base Colors (Institutional)
-            baseColor = eachOrderBlock.bias == BEARISH ? #D63D3D : #00B5AD
-            
-            // Professional Style: High Transparency Background + Solid Border
-            bg_col     = color.new(baseColor, 90) // 90% Transparent
-            border_col = color.new(baseColor, 30) // Solid Border
-            
+            orderBlockColor = styleInput == MONOCHROME ? (eachOrderBlock.bias == BEARISH ? color.new(MONO_BEARISH,80) : color.new(MONO_BULLISH,80)) : internal ? (eachOrderBlock.bias == BEARISH ? internalBearishOrderBlockColor : internalBullishOrderBlockColor) : (eachOrderBlock.bias == BEARISH ? swingBearishOrderBlockColor : swingBullishOrderBlockColor)
             box b_ox        = b_oxes.get(index)
             b_ox.set_top_left_point(    chart.point.new(eachOrderBlock.barTime,na,eachOrderBlock.barHigh))
             b_ox.set_bottom_right_point(chart.point.new(last_bar_time,na,eachOrderBlock.barLow))        
-            b_ox.set_border_color(      border_col)
-            b_ox.set_bgcolor(           bg_col)
-            b_ox.set_border_width(1)
-            b_ox.set_border_style(line.style_solid)
+            b_ox.set_border_color(      internal ? na : orderBlockColor)
+            b_ox.set_bgcolor(           orderBlockColor)
 
 displayStructure(bool internal = false) =>
     var bullishBar = true
@@ -877,7 +869,7 @@ displaySignalDash() =>
             txt := "🔍 WAITING SETUP\n" + (swingTrend.bias == BULLISH ? "BIAS: BULLISH 🟢" : "BIAS: BEARISH 🔴")
             bg_col := color.new(color.black, 40)
         
-        table.cell(sig_tab, 0, 0, txt, text_color=color.white, bgcolor=bg_col, text_size=size.small)
+        table.cell(sig_tab, 0, 0, txt, text_color=color.white, bgcolor=bg_col, text_size=size.large)
 
 // 🎯 SIGNAL GENERATION (VISUALIZE BOT ENTRIES)
 //---------------------------------------------------------------------------------------------------------------------{
@@ -1054,17 +1046,10 @@ checkSignals() =>
                 
                 txt = "BUY"
                 if use_rm_labels
-                    txt := "BUY" // Simplified label
+                    txt := "BUY\nSL: " + str.tostring(sl, format.mintick) + "\nTP: " + str.tostring(tp, format.mintick)
                 
-                // CLEANUP OLD LABELS
-                var label last_buy_label = na
-                if not na(last_buy_label)
-                    label.delete(last_buy_label)
-
                 if barstate.isconfirmed
-                    var label lb_buy = na
-                    label.delete(lb_buy)
-                    lb_buy := label.new(bar_index, low, txt, color=GREEN, style=label.style_label_up, textcolor=color.white, size=sig_size)
+                    label.new(bar_index, low, txt, color=GREEN, style=label.style_label_up, textcolor=color.white, size=size.large)
                     
                     // Logic Position Sizing (Universal 1% Risk Formula)
                     risk_usd_per_unit = risk_in_price / (is_jpy ? close : 1.0)
@@ -1089,17 +1074,10 @@ checkSignals() =>
                 
                 txt = "SELL"
                 if use_rm_labels
-                    txt := "SELL" // Simplified label
+                    txt := "SELL\nSL: " + str.tostring(sl, format.mintick) + "\nTP: " + str.tostring(tp, format.mintick)
                 
-                // CLEANUP OLD LABELS
-                var label last_sell_label = na
-                if not na(last_sell_label)
-                    label.delete(last_sell_label)
-
                 if barstate.isconfirmed
-                    var label lb_sell = na
-                    label.delete(lb_sell)
-                    lb_sell := label.new(bar_index, high, txt, color=RED, style=label.style_label_down, textcolor=color.white, size=sig_size)
+                    label.new(bar_index, high, txt, color=RED, style=label.style_label_down, textcolor=color.white, size=size.large)
                     
                     // Logic Position Sizing (Universal 1% Risk Formula)
                     risk_usd_per_unit = risk_in_price / (is_jpy ? close : 1.0)
