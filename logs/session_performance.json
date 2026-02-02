@@ -517,7 +517,35 @@
       "profit": -26.0,
       "duration_minutes": 2803.6,
       "is_win": false
+    },
+    {
+      "ticket": 2285277763,
+      "symbol": "EURUSDm",
+      "direction": "SELL",
+      "entry_time": "2026-02-02 06:10:52",
+      "exit_time": "2026-02-02 07:28:33",
+      "hour_gmt": 4,
+      "day_of_week": "Monday",
+      "session": "asian",
+      "strategy": "unknown",
+      "profit": -23.8,
+      "duration_minutes": 77.68333333333334,
+      "is_win": false
+    },
+    {
+      "ticket": 2287963045,
+      "symbol": "GBPUSDm",
+      "direction": "SELL",
+      "entry_time": "2026-02-02 06:10:52",
+      "exit_time": "2026-02-02 14:18:11",
+      "hour_gmt": 4,
+      "day_of_week": "Monday",
+      "session": "asian",
+      "strategy": "unknown",
+      "profit": -24.57,
+      "duration_minutes": 487.31666666666666,
+      "is_win": false
     }
   ],
-  "last_updated": "2026-01-28 16:11:49"
+  "last_updated": "2026-02-02 14:20:46"
 }

@@ -3,7 +3,7 @@
 // Modifications & Dashboard by Antigravity (SMC Ultimate Fusion)
 
 //@version=5
-strategy('SMC Balanced Ultra [Pro]', 'SMC Balanced Ultra [Pro]', overlay = true, initial_capital = 10000, default_qty_type = strategy.fixed, currency = currency.USD, commission_type = strategy.commission.percent, commission_value = 0.003, slippage=1, max_labels_count = 500, max_lines_count = 500, max_boxes_count = 500, calc_on_every_tick = true)
+strategy('SMC Ultra [Pro]', 'SMC Ultra [Pro]', overlay = true, initial_capital = 10000, default_qty_type = strategy.fixed, currency = currency.USD, commission_type = strategy.commission.percent, commission_value = 0.003, slippage=1, max_labels_count = 500, max_lines_count = 500, max_boxes_count = 500, calc_on_every_tick = true)
 
 //---------------------------------------------------------------------------------------------------------------------}
 // 🎯 BALANCED ULTRA MODE - PHILOSOPHY
@@ -96,7 +96,9 @@ mitigation_buffer_atr = input.float(0.1, "Mitigation Buffer (ATR)", minval=0.0, 
 use_smt_filter = input.bool(false, "❌ SMT Divergence (DISABLED)", group=grp_signals, tooltip="BALANCED: Désactivé, pas pertinent pour toutes les paires")
 smt_ticker     = input.symbol("FX:GBPUSD", "SMT Correlated Ticker", group=grp_signals)
 
-use_daily_align = input.bool(false, "❌ Daily Trend (DISABLED)", group=grp_signals, tooltip="ULTRA: Désactivé pour libérer les trades")
+// 🆕 TOP-DOWN FILTERS (Weekly → Daily → Intraday)
+use_weekly_filter = input.bool(true, "✅ Weekly Trend Filter (TOP-DOWN)", group=grp_signals, tooltip="RECOMMENDED: Trade only in the direction of the Weekly trend for higher probability")
+use_daily_align = input.bool(true, "✅ Daily Trend Alignment", group=grp_signals, tooltip="Confirm Weekly trend with Daily structure")
 use_internal_trend = input.bool(true, "✅ Trade Internal Trend", group=grp_signals, tooltip="ULTRA: Trade based on Internal Structure (Faster) instead of Swing")
 use_pd_filter   = input.bool(true, "✅ Premium/Discount (ULTRA)", group=grp_signals, tooltip="ULTRA: Seuil assoupli à 60%")
 use_sweep_conf  = input.bool(false, "❌ Liquidity Sweep (DISABLED)", group=grp_signals, tooltip="BALANCED: Désactivé")
@@ -115,6 +117,8 @@ show_pd_bg  = input.bool(true, "Show Premium/Discount Background", group=grp_vis
 c_prem_fill = input.color(color.new(#FF5252, 92), "Premium Zone Fill", group=grp_visual)
 c_disc_fill = input.color(color.new(#00E676, 92), "Discount Zone Fill", group=grp_visual)
 show_pdh_pdl= input.bool(true, "Show PDH / PDL Labels", group=grp_visual)
+show_weekly_levels = input.bool(true, "Show Weekly High/Low", group=grp_visual, tooltip="Display Weekly pivots as major liquidity zones")
+clean_mode = input.bool(false, "Clean Mode (Less Clutter)", group=grp_visual, tooltip="Hides some elements on lower timeframes to reduce visual noise")
 
 grp_breaker = "💥 BREAKER BLOCKS (SMC PRO)"
 show_breakers = input.bool(true, "Show Breaker Blocks", group=grp_breaker, tooltip="Mitigated OB that gets broken = Very strong reversal signal")
@@ -157,9 +161,9 @@ swingsLengthInput               = input.int(    20,         '',                 
 showHighLowSwingsInput          = input(        true,       'Show Strong/Weak High/Low',group = SWING_GROUP)
 
 showInternalOrderBlocksInput    = input(        true,       'Internal Order Blocks' ,   group = BLOCKS_GROUP,   inline = 'iob')
-internalOrderBlocksSizeInput    = input.int(    5,          '',                         group = BLOCKS_GROUP,   minval = 1, maxval = 20,                    inline = 'iob')
+internalOrderBlocksSizeInput    = input.int(    10,         '',                         group = BLOCKS_GROUP,   minval = 1, maxval = 20,                    inline = 'iob')
 showSwingOrderBlocksInput       = input(        true,       'Swing Order Blocks',       group = BLOCKS_GROUP,   inline = 'ob')
-swingOrderBlocksSizeInput       = input.int(    5,          '',                         group = BLOCKS_GROUP,   minval = 1, maxval = 20,                    inline = 'ob') 
+swingOrderBlocksSizeInput       = input.int(    10,         '',                         group = BLOCKS_GROUP,   minval = 1, maxval = 20,                    inline = 'ob') 
 orderBlockFilterInput           = input.string( 'Atr',      'Order Block Filter',       group = BLOCKS_GROUP,   options = [ATR, RANGE])
 orderBlockMitigationInput       = input.string( HIGHLOW,    'Order Block Mitigation',   group = BLOCKS_GROUP,   options = [CLOSE,HIGHLOW])
 internalBullishOrderBlockColor  = input.color(color.new(#1848cc, 80), 'Internal Bullish OB',    group = BLOCKS_GROUP)
@@ -180,6 +184,16 @@ fairValueGapsBullColorInput     = input.color(color.new(#00bcd4, 85), 'Bullish F
 fairValueGapsBearColorInput     = input.color(color.new(#ff9800, 85), 'Bearish FVG (Orange)', group = GAPS_GROUP)
 
 fairValueGapsExtendInput        = input.int(    1,          'Extend FVG',               group = GAPS_GROUP,     minval = 0)
+
+showDailyLevelsInput            = input(        false,      'Daily',    group = LEVELS_GROUP,   inline = 'daily')
+dailyLevelsStyleInput           = input.string( SOLID,      '',         group = LEVELS_GROUP,   inline = 'daily',   options = [SOLID,DASHED,DOTTED])
+dailyLevelsColorInput           = input(        BLUE,       '',         group = LEVELS_GROUP,   inline = 'daily')
+showWeeklyLevelsInput           = input(        false,      'Weekly',   group = LEVELS_GROUP,   inline = 'weekly')
+weeklyLevelsStyleInput          = input.string( SOLID,      '',         group = LEVELS_GROUP,   inline = 'weekly',  options = [SOLID,DASHED,DOTTED])
+weeklyLevelsColorInput          = input(        BLUE,       '',         group = LEVELS_GROUP,   inline = 'weekly')
+showMonthlyLevelsInput          = input(        false,      'Monthly',   group = LEVELS_GROUP,   inline = 'monthly')
+monthlyLevelsStyleInput         = input.string( SOLID,      '',         group = LEVELS_GROUP,   inline = 'monthly', options = [SOLID,DASHED,DOTTED])
+monthlyLevelsColorInput         = input(        BLUE,       '',         group = LEVELS_GROUP,   inline = 'monthly')
 // GLOBAL CALCULATIONS (FOR DASHBOARD & FUSION)
 //---------------------------------------------------------------------------------------------------------------------{
 // Daily Data for Dashboard
@@ -320,6 +334,23 @@ var initialTime                     = time
 // We use lookahead_off to ensure we only use Closed Data from Higher Timeframes
 htf_bias = request.security(syminfo.tickerid, htf_tf, swingTrend.bias, lookahead=barmerge.lookahead_off)
 smt_bias = use_smt_filter ? request.security(smt_ticker, timeframe.period, swingTrend.bias, lookahead=barmerge.lookahead_off) : 0
+
+// 🆕 WEEKLY ANALYSIS (TOP-DOWN APPROACH - MACRO CONTEXT)
+// Provides the big picture trend and key levels for all timeframes
+// This is the foundation of institutional trading: Macro → Micro
+// NOTE: Must be declared AFTER swingTrend, swingHigh, swingLow are initialized
+w_trend = request.security(syminfo.tickerid, "W", swingTrend.bias, lookahead=barmerge.lookahead_off)
+w_high = request.security(syminfo.tickerid, "W", swingHigh.currentLevel, lookahead=barmerge.lookahead_off)
+w_low = request.security(syminfo.tickerid, "W", swingLow.currentLevel, lookahead=barmerge.lookahead_off)
+w_close = request.security(syminfo.tickerid, "W", close[1], lookahead=barmerge.lookahead_off)
+
+// Weekly Trend Text & Color
+w_trend_txt = w_trend == BULLISH ? "BULLISH" : w_trend == BEARISH ? "BEARISH" : "NEUTRAL"
+w_trend_col = w_trend == BULLISH ? GREEN : w_trend == BEARISH ? RED : GRAY
+
+// Weekly Range (for context and volatility assessment)
+w_range = not na(w_high) and not na(w_low) ? w_high - w_low : 0
+w_range_pct = w_low > 0 and not na(w_range) ? (w_range / w_low) * 100 : 0
 
 
 if barstate.isfirst
@@ -585,6 +616,62 @@ updateTrailingExtremes() =>
     trailing.lastBottomTime := trailing.bottom == low ? time : trailing.lastBottomTime
 
 //---------------------------------------------------------------------------------------------------------------------}
+drawLevels(string timeframe, bool sameTimeframe, string style, color levelColor) =>
+    [topLevel, bottomLevel, leftTime, rightTime] = request.security(syminfo.tickerid, timeframe, [high[1], low[1], time[1], time],lookahead = barmerge.lookahead_on)
+
+    float parsedTop         = sameTimeframe ? high : topLevel
+    float parsedBottom      = sameTimeframe ? low : bottomLevel    
+
+    int parsedLeftTime      = sameTimeframe ? time : leftTime
+    int parsedRightTime     = sameTimeframe ? time : rightTime
+
+    int parsedTopTime       = time
+    int parsedBottomTime    = time
+
+    if not sameTimeframe
+        int leftIndex               = times.binary_search_rightmost(parsedLeftTime)
+        int rightIndex              = times.binary_search_rightmost(parsedRightTime)
+
+        array<int> timeArray        = times.slice(leftIndex,rightIndex)
+        array<float> topArray       = highs.slice(leftIndex,rightIndex)
+        array<float> bottomArray    = lows.slice(leftIndex,rightIndex)
+
+        parsedTopTime               := timeArray.size() > 0 ? timeArray.get(topArray.indexof(topArray.max())) : initialTime
+        parsedBottomTime            := timeArray.size() > 0 ? timeArray.get(bottomArray.indexof(bottomArray.min())) : initialTime
+
+    var line topLine        = line.new(na, na, na, na, xloc = xloc.bar_time, color = levelColor, style = getStyle(style))
+    var line bottomLine     = line.new(na, na, na, na, xloc = xloc.bar_time, color = levelColor, style = getStyle(style))
+    var label topLabel      = label.new(na, na, xloc = xloc.bar_time, text = str.format('P{0}H',timeframe), color=color(na), textcolor = levelColor, size = size.small, style = label.style_label_left)
+    var label bottomLabel   = label.new(na, na, xloc = xloc.bar_time, text = str.format('P{0}L',timeframe), color=color(na), textcolor = levelColor, size = size.small, style = label.style_label_left)
+
+    base_time = time
+    
+    topLine.set_first_point(    chart.point.new(parsedTopTime,na,parsedTop))
+    topLine.set_second_point(   chart.point.new(base_time + 20 * (time-time[1]),na,parsedTop))   
+    topLabel.set_point(         chart.point.new(base_time + 20 * (time-time[1]),na,parsedTop))
+
+    bottomLine.set_first_point( chart.point.new(parsedBottomTime,na,parsedBottom))    
+    bottomLine.set_second_point(chart.point.new(base_time + 20 * (time-time[1]),na,parsedBottom))
+    bottomLabel.set_point(      chart.point.new(base_time + 20 * (time-time[1]),na,parsedBottom))
+
+drawHighLowSwings() =>
+    var line topLine        = line.new(na, na, na, na, color = swingBearishColor, xloc = xloc.bar_time)
+    var line bottomLine     = line.new(na, na, na, na, color = swingBullishColor, xloc = xloc.bar_time)
+    var label topLabel      = label.new(na, na, color=color(na), textcolor = swingBearishColor, xloc = xloc.bar_time, style = label.style_label_down, size = size.tiny)
+    var label bottomLabel   = label.new(na, na, color=color(na), textcolor = swingBullishColor, xloc = xloc.bar_time, style = label.style_label_up, size = size.tiny)
+
+    rightTimeBar            = time + 20 * (time - time[1])
+
+    topLine.set_first_point(    chart.point.new(trailing.lastTopTime, na, trailing.top))
+    topLine.set_second_point(   chart.point.new(rightTimeBar, na, trailing.top))
+    topLabel.set_point(         chart.point.new(rightTimeBar, na, trailing.top))
+    topLabel.set_text(          swingTrend.bias == BEARISH ? 'Strong High' : 'Weak High')
+
+    bottomLine.set_first_point( chart.point.new(trailing.lastBottomTime, na, trailing.bottom))
+    bottomLine.set_second_point(chart.point.new(rightTimeBar, na, trailing.bottom))
+    bottomLabel.set_point(      chart.point.new(rightTimeBar, na, trailing.bottom))
+    bottomLabel.set_text(       swingTrend.bias == BULLISH ? 'Strong Low' : 'Weak Low')
+
 // 🆕 ADDED FEATURES: SWEEPS, PDH/PDL, DASHBOARD, ZONES
 //---------------------------------------------------------------------------------------------------------------------{
 
@@ -641,6 +728,32 @@ if show_pd_bg and trailing.top > trailing.bottom
     box_premium := box.new(bar_index - 10, trailing.top, bar_index + 10, mid, border_color=na, bgcolor=c_prem_fill)
     box_discount := box.new(bar_index - 10, mid, bar_index + 10, trailing.bottom, border_color=na, bgcolor=c_disc_fill)
     line_50 := line.new(bar_index - 10, mid, bar_index + 10, mid, color=color.gray, style=line.style_dashed)
+
+// 4. WEEKLY HIGH/LOW LEVELS (Major Liquidity Zones)
+// These are the institutional targets - where big money takes profit
+if show_weekly_levels and not na(w_high) and not na(w_low)
+    var line w_high_line = na
+    var line w_low_line = na
+    var label w_high_lbl = na
+    var label w_low_lbl = na
+    
+    // Delete previous lines/labels
+    line.delete(w_high_line)
+    line.delete(w_low_line)
+    label.delete(w_high_lbl)
+    label.delete(w_low_lbl)
+    
+    // Draw Weekly High (Major Resistance)
+    w_high_line := line.new(bar_index - 100, w_high, bar_index + 20, w_high, color=color.new(color.red, 60), width=2, style=line.style_dashed)
+    
+    // Draw Weekly Low (Major Support)
+    w_low_line := line.new(bar_index - 100, w_low, bar_index + 20, w_low, color=color.new(color.green, 60), width=2, style=line.style_dashed)
+    
+    // Label Weekly High
+    w_high_lbl := label.new(bar_index + 20, w_high, "W HIGH", style=label.style_none, textcolor=color.new(color.red, 20), size=size.small, textalign=text.align_left)
+    
+    // Label Weekly Low
+    w_low_lbl := label.new(bar_index + 20, w_low, "W LOW", style=label.style_none, textcolor=color.new(color.green, 20), size=size.small, textalign=text.align_left)
 
 //---------------------------------------------------------------------------------------------------------------------}
 // 💥 BREAKER BLOCKS DETECTION (100% SMC)
@@ -783,8 +896,8 @@ if ta.change(strategy.losstrades) > 0
 daily_drawdown_pct = not na(start_day_equity) and start_day_equity > 0 ? ((start_day_equity - strategy.equity) / start_day_equity) * 100 : 0
 loss_confirm       = daily_losses < max_daily_loss and daily_drawdown_pct < max_drawdown_pct
 
-// 4. INSTITUTIONAL DASHBOARD
-var table dash = table.new(position.top_right, 2, 8, bgcolor=color.new(#131722, 10), border_color=color.new(GRAY, 80))
+// 4. INSTITUTIONAL DASHBOARD (TOP-DOWN APPROACH)
+var table dash = table.new(position.top_right, 2, 10, bgcolor=color.new(#131722, 10), border_color=color.new(GRAY, 80))
 
 // Calculer BOS Strength à chaque tick pour cohérence
 bos_str = calculateBOSStrength()
@@ -801,15 +914,19 @@ if show_dash and barstate.islast
     table.cell(dash, 0, 1, "Structure (Swing)", text_color=color.silver, text_halign=text.align_left, text_size=dash_size)
     table.cell(dash, 1, 1, st_txt, text_color=st_col, bgcolor=color.new(st_col, 90), text_size=dash_size)
     
+    // 🆕 WEEKLY TREND (TOP-DOWN - Most Important)
+    table.cell(dash, 0, 2, "Trend (Weekly)", text_color=color.silver, text_halign=text.align_left, text_size=dash_size)
+    table.cell(dash, 1, 2, w_trend_txt, text_color=w_trend_col, bgcolor=color.new(w_trend_col, 90), text_size=dash_size)
+    
     // Trend (Daily)
-    table.cell(dash, 0, 2, "Trend (Daily)", text_color=color.silver, text_halign=text.align_left, text_size=dash_size)
-    table.cell(dash, 1, 2, d_trend_txt, text_color=d_trend_col, bgcolor=color.new(d_trend_col, 90), text_size=dash_size)
+    table.cell(dash, 0, 3, "Trend (Daily)", text_color=color.silver, text_halign=text.align_left, text_size=dash_size)
+    table.cell(dash, 1, 3, d_trend_txt, text_color=d_trend_col, bgcolor=color.new(d_trend_col, 90), text_size=dash_size)
     
     // BOS Strength (100% SMC - remplace RSI)
     bos_txt = str.tostring(bos_str, "#.#") + " ATR"
     bos_c = bos_str > 2.0 ? GREEN : bos_str > 1.0 ? color.orange : RED
-    table.cell(dash, 0, 3, "BOS Strength", text_color=color.silver, text_halign=text.align_left, text_size=dash_size)
-    table.cell(dash, 1, 3, bos_txt, text_color=bos_c, bgcolor=color.new(bos_c, 90), text_size=dash_size)
+    table.cell(dash, 0, 4, "BOS Strength", text_color=color.silver, text_halign=text.align_left, text_size=dash_size)
+    table.cell(dash, 1, 4, bos_txt, text_color=bos_c, bgcolor=color.new(bos_c, 90), text_size=dash_size)
     
     // 🆕 ADR Exhaustion Check (100% SMC)
     float d_range_cur = (d_high_live - d_low_live)
@@ -819,27 +936,33 @@ if show_dash and barstate.islast
     adr_txt = str.tostring(adr_pct, "#.0") + "%"
     adr_col = adr_pct >= 200 ? RED : adr_pct >= 150 ? color.orange : GREEN
     
-    table.cell(dash, 0, 4, "ADR Exhaustion", text_color=color.silver, text_halign=text.align_left, text_size=dash_size)
-    table.cell(dash, 1, 4, adr_txt, text_color=adr_col, bgcolor=color.new(adr_col, 90), text_size=dash_size)
+    table.cell(dash, 0, 5, "ADR Exhaustion", text_color=color.silver, text_halign=text.align_left, text_size=dash_size)
+    table.cell(dash, 1, 5, adr_txt, text_color=adr_col, bgcolor=color.new(adr_col, 90), text_size=dash_size)
 
     // Killzone Active (100% SMC)
     kz_display = is_kz ? kz_name : "NONE"
     kz_display_col = is_kz ? color.yellow : GRAY
+    
+    // Killzone status (Use the synced logic)
+    table.cell(dash, 0, 6, "Killzone", text_color=color.silver, text_halign=text.align_left, text_size=dash_size)
+    table.cell(dash, 1, 6, kz_name, text_color=kz_col, bgcolor=color.new(kz_col, 90), text_size=dash_size)
+    
     // Pricing
     mid_price = (trailing.top + trailing.bottom) / 2
     pr_txt = close > mid_price ? "Premium" : "Discount"
     pr_col = close > mid_price ? RED : GREEN
-    table.cell(dash, 0, 6, "Pricing", text_color=color.silver, text_halign=text.align_left, text_size=dash_size)
-    table.cell(dash, 1, 6, pr_txt, text_color=pr_col, bgcolor=color.new(pr_col, 90), text_size=dash_size)
-
-    // Killzone status (Use the synced logic)
-    table.cell(dash, 0, 5, "Killzone", text_color=color.silver, text_halign=text.align_left, text_size=dash_size)
-    table.cell(dash, 1, 5, kz_name, text_color=kz_col, bgcolor=color.new(kz_col, 90), text_size=dash_size)
+    table.cell(dash, 0, 7, "Pricing", text_color=color.silver, text_halign=text.align_left, text_size=dash_size)
+    table.cell(dash, 1, 7, pr_txt, text_color=pr_col, bgcolor=color.new(pr_col, 90), text_size=dash_size)
     
     // Asian Range
     asian_txt = na(asian_h) ? "WAITING" : str.tostring(asian_h, format.mintick) + " / " + str.tostring(asian_l, format.mintick)
-    table.cell(dash, 0, 7, "Asian High/Low", text_color=color.silver, text_halign=text.align_left, text_size=dash_size)
-    table.cell(dash, 1, 7, asian_txt, text_color=color.yellow, text_size=dash_size)
+    table.cell(dash, 0, 8, "Asian High/Low", text_color=color.silver, text_halign=text.align_left, text_size=dash_size)
+    table.cell(dash, 1, 8, asian_txt, text_color=color.yellow, text_size=dash_size)
+    
+    // 🆕 Weekly Range (Volatility Context)
+    w_range_txt = str.tostring(w_range_pct, "#.##") + "%"
+    table.cell(dash, 0, 9, "Weekly Range", text_color=color.silver, text_halign=text.align_left, text_size=dash_size)
+    table.cell(dash, 1, 9, w_range_txt, text_color=color.aqua, text_size=dash_size)
 
 //---------------------------------------------------------------------------------------------------------------------}
 
@@ -955,7 +1078,14 @@ checkSignals() =>
         // 1. MTF Filter
         bool mtf_confirm = not use_mtf_filter or (is_buy_trend and htf_bias == BULLISH) or (is_sell_trend and htf_bias == BEARISH)
         
-        // 2. SMT Filter (Divergence check)
+        // 🆕 2. WEEKLY FILTER (TOP-DOWN APPROACH - Most Important)
+        // This is the foundation: Never trade against the Weekly trend
+        // Institutions trade from macro to micro, we do the same
+        bool weekly_confirm = not use_weekly_filter or 
+                              (is_buy_trend and w_trend == BULLISH) or 
+                              (is_sell_trend and w_trend == BEARISH)
+        
+        // 3. SMT Filter (Divergence check)
         bool smt_confirm = not use_smt_filter or (is_buy_trend and smt_bias == BULLISH) or (is_sell_trend and smt_bias == BEARISH)
         
         // 3. BOS Strength Filter
@@ -1043,7 +1173,7 @@ checkSignals() =>
         // SIGNAL BUY (Dynamic Confluence)
         // ULTRA FIX: Allow Swing OB OR Internal OB OR FVG
         buy_conf = touch_bull_ob or touch_bull_iob or touch_bull_fvg
-        if is_buy_trend and buy_conf and mtf_confirm and smt_confirm and (bos_str >= bos_threshold) and high_vol and is_kz and d_align and pd_confirm and has_sweep and adr_confirm and loss_confirm and candle_conf // ULTRA FIX: Use bos_threshold input
+        if is_buy_trend and buy_conf and mtf_confirm and weekly_confirm and smt_confirm and (bos_str >= bos_threshold) and high_vol and is_kz and d_align and pd_confirm and has_sweep and adr_confirm and loss_confirm and candle_conf // TOP-DOWN: Added weekly_confirm
             if new_dir != 1
                 entry_p = na(sig_ent) ? close : sig_ent
                 // Gold Volatility Protection: Wider SL Padding (1.5 ATR)
@@ -1079,7 +1209,7 @@ checkSignals() =>
 
         // SIGNAL SELL (Dynamic Confluence)
         sell_conf = touch_bear_ob or touch_bear_iob or touch_bear_fvg
-        if is_sell_trend and sell_conf and mtf_confirm and smt_confirm and (bos_str >= bos_threshold) and high_vol and is_kz and d_align and pd_confirm and has_sweep and adr_confirm and loss_confirm and candle_conf // ULTRA FIX: Use bos_threshold input
+        if is_sell_trend and sell_conf and mtf_confirm and weekly_confirm and smt_confirm and (bos_str >= bos_threshold) and high_vol and is_kz and d_align and pd_confirm and has_sweep and adr_confirm and loss_confirm and candle_conf // TOP-DOWN: Added weekly_confirm
             if new_dir != -1
                 // Dynamic ATR Padding (Wider for Gold)
                 padding_value = (is_gold ? 1.5 : sl_padding_atr) * atr_val_14
@@ -1148,6 +1278,10 @@ if showFairValueGapsInput
 if show_breakers
     detectBreakers()
 
+
+if showHighLowSwingsInput
+    drawHighLowSwings()
+
 if barstate.islastconfirmedhistory or barstate.islast
     if showInternalOrderBlocksInput        
         drawOrderBlocks(true)
@@ -1155,6 +1289,15 @@ if barstate.islastconfirmedhistory or barstate.islast
         drawOrderBlocks()
     if show_breakers
         drawBreakers()
+    
+    if showDailyLevelsInput and not higherTimeframe('D')
+        drawLevels('D',timeframe.isdaily,dailyLevelsStyleInput,dailyLevelsColorInput)
+
+    if showWeeklyLevelsInput and not higherTimeframe('W')
+        drawLevels('W',timeframe.isweekly,weeklyLevelsStyleInput,weeklyLevelsColorInput)
+
+    if showMonthlyLevelsInput and not higherTimeframe('M')
+        drawLevels('M',timeframe.ismonthly,monthlyLevelsStyleInput,monthlyLevelsColorInput)
 
 // 🎯 Signals
 [s_dir, s_sl, s_ent] = checkSignals()

@@ -291,6 +291,35 @@ class TradeJournal:
         self._write_row(data)
         status_emoji = "🟢" if profit_usd > 0 else "🔴"
         logger.info(f"📝 Exit journalisé: #{ticket} | {status_emoji} ${profit_usd:.2f} ({profit_pct:.2f}%) | Raison: {exit_reason}")
+        
+        # 🚀 AUTO-UPDATE REPORT
+        self._trigger_report_generation()
+
+    def _trigger_report_generation(self):
+        """Lance la génération du rapport HTML en arrière-plan."""
+        try:
+            import subprocess
+            import sys
+            # Chemin absolu ou relatif
+            script_path = Path("tools/journal_analytics.py")
+            if script_path.exists():
+                # On lance en mode non-bloquant
+                subprocess.Popen([sys.executable, str(script_path)], 
+                                 stdout=subprocess.DEVNULL, 
+                                 stderr=subprocess.DEVNULL)
+                logger.info("📊 Rapport HTML en cours de régénération automatique...")
+            else:
+                # Essayer chemin absolu si relatif echoue (d:\SMC\...)
+                abs_path = Path(r"D:\SMC\tools\journal_analytics.py")
+                if abs_path.exists():
+                    subprocess.Popen([sys.executable, str(abs_path)], 
+                                     stdout=subprocess.DEVNULL, 
+                                     stderr=subprocess.DEVNULL)
+                    logger.info("📊 Rapport HTML (Abs) en cours de régénération...")
+                else:
+                    logger.warning(f"⚠️ Script Analytics introuvable pour auto-update.")
+        except Exception as e:
+            logger.error(f"❌ Erreur déclenchement rapport: {e}")
 
     def log_decision(self, symbol: str, is_taken: bool, direction: str, score: float,
                     rejection_reason: str = "", analysis: Dict[str, Any] = None):

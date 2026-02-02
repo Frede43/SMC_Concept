@@ -57,92 +57,65 @@ class MomentumConfirmationFilter:
         prev_1 = last_candles.iloc[-2]
         prev_2 = last_candles.iloc[-3]
 
-        # ----- CRITÈRE 0 (Pré-requis) : VOLUME SUFFISANT (RVOL) -----
-        # Filtre anti-fakeout week-end
-        # ✅ FIX: Utiliser la dernière bougie CLOTURÉE (prev_1) pour le volume
-        # car la bougie actuelle (current) est en formation et a naturellement un volume faible au début
+        # ----- CRITÈRE 0 (Pré-requis) : VOLUME SUFFISANT (RVOL STRICT) -----
+        # 🚀 EXPERT FIX: On veut voir l'institution sur la bougie de signal (current), pas avant.
         vol_col = "tick_volume" if "tick_volume" in df.columns else "volume"
         if vol_col in df.columns:
-            prev_vol = prev_1[vol_col]
-            # Calculer la moyenne sur les 20 dernières bougies CLOTURÉES
-            # on prend .iloc[-2] pour exclure la bougie courante qui biaiserait la moyenne à la baisse
-            avg_vol = df[vol_col].rolling(20).mean().iloc[-2]
+            # On vérifie le volume de la bougie ACTUELLE (celle qui fait le signal)
+            curr_vol = current[vol_col]
+            avg_vol = df[vol_col].rolling(20).mean().iloc[-2] # Moyenne sur les préc, pas incluant current
 
             if avg_vol > 0:
-                rvol = prev_vol / avg_vol
-                if rvol < 0.7:
+                rvol = curr_vol / avg_vol
+                # 🔥 STRICT MODE: "Chasseur de Mouvements Puissants" = RVOL > 1.5
+                if rvol < 1.5:
                     logger.warning(
-                        f"   ❌ SELL BLOQUÉ : Volume trop faible sur bougie précédente (RVOL: {rvol:.2f} < 0.7) - Faux mouvement probable"
+                        f"   ❌ SELL BLOQUÉ : Volume trop faible (RVOL: {rvol:.2f} < 1.5). Pas de puissance."
                     )
-                    return False, f"❌ Low Volume (Prev RVOL: {rvol:.2f})"
+                    return False, f"❌ Low Power (RVOL: {rvol:.2f})"
 
-        # ----- CRITÈRE 1 : Bougie de Rejet (Wick supérieur dominant) -----
-        upper_wick = current["high"] - max(current["open"], current["close"])
-        lower_wick = min(current["open"], current["close"]) - current["low"]
-        body = abs(current["close"] - current["open"])
+        # ----- CRITÈRE 1 : Confirmation Structurelle (Micro-BOS / Breakout) -----
+        # Le prix doit casser le plus bas précédent pour valider le retournement
+        # "Au lieu d'entrer dans la zone à l'aveugle, on attend la cassure"
+        
+        has_micro_bos = current["close"] < prev_1["low"]
+        
+        if not has_micro_bos:
+             logger.warning(f"   ❌ SELL BLOQUÉ : Pas de cassure structurelle (Close {current['close']} > Low {prev_1['low']})")
+             return False, "❌ No Micro-BOS (Wait for break)"
 
-        # Bougie de rejet = mèche sup > 2x le corps ET corps rouge
+        # ----- CRITÈRE 2 : Confirmation de Force (Engulfing ou Marubozu) -----
         is_bearish = current["close"] < current["open"]
-        has_rejection_wick = upper_wick > (body * 2) and upper_wick > (atr_value * 0.3)
+        body = abs(current["close"] - current["open"])
+        full_range = current["high"] - current["low"]
+        
+        # A) Engulfing Bearish
+        prev_body = abs(prev_1["close"] - prev_1["open"])
+        is_engulfing = is_bearish and body > prev_body and current["close"] < prev_1["low"]
 
-        if is_bearish and has_rejection_wick:
-            logger.info(
-                f"   ✅ Confirmation : Bougie de Rejet détectée (Wick: {upper_wick:.1f} vs Body: {body:.1f})"
-            )
-            return True, "Rejection candle confirmed"
+        # B) Marubozu
+        is_strong_candle = is_bearish and (body / full_range > 0.6) if full_range > 0 else False
 
-        # ----- CRITÈRE 2 : Pause du Momentum (Consolidation) -----
-        # Les 3 dernières bougies ont un range < ATR/2 (marché essoufflé)
-        ranges = [
-            prev_2["high"] - prev_2["low"],
-            prev_1["high"] - prev_1["low"],
-            current["high"] - current["low"],
-        ]
-        avg_range = np.mean(ranges)
-
-        if avg_range < (atr_value / 2):
-            logger.info(
-                f"   ✅ Confirmation : Pause du momentum (Avg Range: {avg_range:.1f} < ATR/2: {atr_value/2:.1f})"
-            )
-            return True, "Momentum pause detected"
-
-        # ----- CRITÈRE 3 : Série de bougies baissières (début de retournement) -----
-        # Les 2 dernières closes sont descendantes
-        if prev_1["close"] < prev_2["close"] and current["close"] < prev_1["close"]:
-            logger.info(f"   ✅ Confirmation : Série baissière commencée (Downtrend initiation)")
-            return True, "Bearish sequence started"
-
-        # ----- CRITÈRE 4 : DISPLACEMENT (Déplacement Pur) -----
-        # Le corps de la bougie actuelle est large (intention institutionnelle)
-        # Body > Moyenne des 5 derniers bodies
-        avg_body_5 = abs(last_candles["close"] - last_candles["open"]).mean()
-        if body > (avg_body_5 * 0.8) and is_bearish: # 0.8 pour être un peu flexible
-             logger.info(f"   ✅ Confirmation : Displacement baissier (Body {body:.1f} > Avg {avg_body_5:.1f})")
-             return True, "Bearish Displacement"
-
-        # Aucune confirmation trouvée
-        logger.warning(
-            f"   ❌ SELL BLOQUÉ : Zone Premium Extrême ({premium_percent:.1f}%) sans confirmation de rejet"
-        )
-        return False, f"❌ No rejection in extreme Premium ({premium_percent:.1f}%)"
+        if is_engulfing or is_strong_candle or has_micro_bos:
+             # Si on a le Micro-BOS + Volume, on est bon, l'engulfing est un bonus
+             return True, "Strong Breakout Confirmed"
+        
+        return False, "Weak Signal"
 
     def check_buy_confirmation(
         self, df: pd.DataFrame, premium_percent: float, atr_value: float
     ) -> Tuple[bool, str]:
         """
         Vérifie si un BUY dans une zone Discount extrême a une confirmation.
-
-        Returns:
-            (allowed, reason)
+        Returns: (allowed, reason)
         """
         if not self.enabled:
             return True, "Momentum filter disabled"
 
-        # Si Discount > 10%, pas besoin de confirmation stricte
+        # Si Discount > 20%, pas besoin de confirmation stricte
         if premium_percent > self.extreme_discount_threshold:
             return True, "Discount zone not extreme"
 
-        # Zone EXTRÊME détectée
         logger.info(
             f"   🔍 Zone Discount Extrême ({premium_percent:.1f}%). Vérification confirmation..."
         )
@@ -153,61 +126,43 @@ class MomentumConfirmationFilter:
         last_candles = df.tail(5)
         current = last_candles.iloc[-1]
         prev_1 = last_candles.iloc[-2]
-        prev_2 = last_candles.iloc[-3]
 
-        # ----- CRITÈRE 0 (Pré-requis) : VOLUME SUFFISANT (RVOL) -----
+        # ----- CRITÈRE 0 (Pré-requis) : VOLUME SUFFISANT (RVOL STRICT) -----
         vol_col = "tick_volume" if "tick_volume" in df.columns else "volume"
         if vol_col in df.columns:
-            prev_vol = prev_1[vol_col]
+            curr_vol = current[vol_col]
             avg_vol = df[vol_col].rolling(20).mean().iloc[-2]
 
             if avg_vol > 0:
-                rvol = prev_vol / avg_vol
-                if rvol < 0.7:
+                rvol = curr_vol / avg_vol
+                # 🔥 STRICT MODE: RVOL > 1.5
+                if rvol < 1.5:
                     logger.warning(
-                        f"   ❌ BUY BLOQUÉ : Volume trop faible sur bougie précédente (RVOL: {rvol:.2f} < 0.7) - Faux mouvement probable"
+                        f"   ❌ BUY BLOQUÉ : Volume trop faible (RVOL: {rvol:.2f} < 1.5). Pas de puissance."
                     )
-                    return False, f"❌ Low Volume (Prev RVOL: {rvol:.2f})"
+                    return False, f"❌ Low Power (RVOL: {rvol:.2f})"
 
-        # ----- CRITÈRE 1 : Bougie de Rebond (Wick inférieur dominant) -----
-        upper_wick = current["high"] - max(current["open"], current["close"])
-        lower_wick = min(current["open"], current["close"]) - current["low"]
-        body = abs(current["close"] - current["open"])
+        # ----- CRITÈRE 1 : Confirmation Structurelle (Micro-BOS / Breakout) -----
+        # Le prix doit casser le plus haut précédent
+        has_micro_bos = current["close"] > prev_1["high"]
+        
+        if not has_micro_bos:
+             logger.warning(f"   ❌ BUY BLOQUÉ : Pas de cassure structurelle (Close {current['close']} < High {prev_1['high']})")
+             return False, "❌ No Micro-BOS (Wait for break)"
 
+        # ----- CRITÈRE 2 : Confirmation de Force -----
         is_bullish = current["close"] > current["open"]
-        has_bounce_wick = lower_wick > (body * 2) and lower_wick > (atr_value * 0.3)
+        body = abs(current["close"] - current["open"])
+        full_range = current["high"] - current["low"]
 
-        if is_bullish and has_bounce_wick:
-            logger.info(
-                f"   ✅ Confirmation : Bougie de Rebond détectée (Wick: {lower_wick:.1f} vs Body: {body:.1f})"
-            )
-            return True, "Bounce candle confirmed"
+        # A) Engulfing Bullish
+        prev_body = abs(prev_1["close"] - prev_1["open"])
+        is_engulfing = is_bullish and body > prev_body and current["close"] > prev_1["high"]
 
-        # ----- CRITÈRE 2 : Pause du Momentum -----
-        ranges = [
-            prev_2["high"] - prev_2["low"],
-            prev_1["high"] - prev_1["low"],
-            current["high"] - current["low"],
-        ]
-        avg_range = np.mean(ranges)
+        # B) Marubozu
+        is_strong_candle = is_bullish and (body / full_range > 0.6) if full_range > 0 else False
 
-        if avg_range < (atr_value / 2):
-            logger.info(f"   ✅ Confirmation : Pause du momentum (Avg Range: {avg_range:.1f})")
-            return True, "Momentum pause detected"
+        if is_engulfing or is_strong_candle or has_micro_bos:
+             return True, "Strong Breakout Confirmed"
 
-        # ----- CRITÈRE 3 : Série de bougies haussières -----
-        if prev_1["close"] > prev_2["close"] and current["close"] > prev_1["close"]:
-            logger.info(f"   ✅ Confirmation : Série haussière commencée")
-            return True, "Bullish sequence started"
-
-        # ----- CRITÈRE 4 : DISPLACEMENT (Déplacement Pur) -----
-        # Body > Moyenne des 5 derniers bodies
-        avg_body_5 = abs(last_candles["close"] - last_candles["open"]).mean()
-        if body > (avg_body_5 * 0.8) and is_bullish:
-             logger.info(f"   ✅ Confirmation : Displacement haussier (Body {body:.1f} > Avg {avg_body_5:.1f})")
-             return True, "Bullish Displacement"
-
-        logger.warning(
-            f"   ❌ BUY BLOQUÉ : Zone Discount Extrême ({premium_percent:.1f}%) sans confirmation de rebond"
-        )
-        return False, f"❌ No bounce in extreme Discount ({premium_percent:.1f}%)"
+        return False, "Weak Signal"
