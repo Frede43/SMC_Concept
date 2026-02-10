@@ -1,0 +1,273 @@
+
+        <html>
+        <head>
+            <title>SMC Pro Journal</title>
+            <style>
+                body { font-family: 'Segoe UI', sans-serif; background-color: #0e0e0e; color: #e0e0e0; padding: 20px; }
+                h1 { color: #00E676; text-transform: uppercase; letter-spacing: 2px; }
+                .kpi-container { display: flex; justify-content: space-between; margin-bottom: 20px; }
+                .kpi-card { background: #1e1e1e; padding: 20px; border-radius: 8px; width: 18%; text-align: center; border-left: 4px solid #00E676; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+                .kpi-card.bad { border-left: 4px solid #FF5252; }
+                .kpi-title { font-size: 12px; opacity: 0.7; text-transform: uppercase; }
+                .kpi-value { font-size: 28px; font-weight: bold; margin-top: 5px; }
+                .table-container { margin-top: 30px; overflow-x: auto; }
+                table { width: 100%; border-collapse: collapse; background: #1e1e1e; font-size: 14px; }
+                th, td { padding: 15px; text-align: left; border-bottom: 1px solid #333; }
+                th { background-color: #252525; color: #00E676; font-weight: 600; }
+                tr:hover { background-color: #2a2a2a; }
+                .win { color: #00E676; font-weight: bold; }
+                .loss { color: #FF5252; font-weight: bold; }
+                .tag { background: #333; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 4px; }
+            </style>
+        </head>
+        <body>
+            <h1>SMC Algo | Institutional Dashboard</h1>
+            <div class="kpi-container">
+                <div class="kpi-card">
+                    <div class="kpi-title">NET PROFIT</div>
+                    <div class="kpi-value loss">$-6.22</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Win Rate</div>
+                    <div class="kpi-value">25.0%</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Trades</div>
+                    <div class="kpi-value">20</div>
+                </div>
+                 <div class="kpi-card">
+                    <div class="kpi-title">Profit Factor</div>
+                    <div class="kpi-value">0.14</div>
+                </div>
+                 <div class="kpi-card">
+                    <div class="kpi-title">Avg Win/Loss</div>
+                    <div class="kpi-value">$0 / $-0</div>
+                </div>
+            </div>
+            <div id="charts">
+                <div>                        <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.3.0.min.js" integrity="sha256-bO3dS6yCpk9aK4gUpNELtCiDeSYvGYnK7jFI58NQnHI=" crossorigin="anonymous"></script>                <div id="bd7749fb-b892-4a61-958b-522654f899aa" class="plotly-graph-div" style="height:800px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("bd7749fb-b892-4a61-958b-522654f899aa")) {                    Plotly.newPlot(                        "bd7749fb-b892-4a61-958b-522654f899aa",                        [{"fill":"tozeroy","line":{"color":"#00E676","width":3},"mode":"lines+markers","name":"Equity","x":["2026-01-26T12:28:58.000000000","2026-01-26T13:04:47.000000000","2026-01-26T18:24:51.000000000","2026-01-27T09:46:35.000000000","2026-01-27T11:59:05.000000000","2026-01-27T12:09:17.000000000","2026-01-27T12:14:23.000000000","2026-01-27T14:19:57.000000000","2026-01-27T15:59:08.000000000","2026-01-27T16:09:22.000000000","2026-01-27T16:50:02.000000000","2026-01-28T08:25:27.000000000","2026-01-28T10:23:08.000000000","2026-02-02T06:10:56.000000000","2026-02-02T12:03:01.000000000","2026-02-03T15:05:48.000000000","2026-02-04T11:00:43.000000000","2026-02-04T12:01:35.000000000","2026-02-10T12:04:19.000000000","2026-02-10T13:15:37.000000000"],"y":{"dtype":"f8","bdata":"XI\u002fC9Shc378oXI\u002fC9SjMvydcj8L1KLy\u002f16NwPQrX478UrkfhehTyvwAAAAAAAPi\u002fhetRuB6F87+amZmZmZnxv3wUrkfheuy\u002fPgrXo3A98r\u002fsUbgehev5vwrXo3A9CgHASOF6FK5HBcA0MzMzMzMJwEjhehSuRw3ArkfhehSuEMC4HoXrUbgSwLgehetRuBTA16NwPQrXFsDhehSuR+EYwA=="},"type":"scatter","xaxis":"x","yaxis":"y"},{"hole":0.6,"labels":["Wins","Losses","BE"],"marker":{"colors":["#00E676","#FF5252","#FFD600"]},"values":[5,15,0],"type":"pie","domain":{"x":[0.0,0.45],"y":[0.0,0.375]}},{"marker":{"color":["#FF5252","#FF5252","#FF5252"]},"x":["EURUSDm","GBPUSDm","USDJPYm"],"y":{"dtype":"f8","bdata":"cT0K16NwA8BmZmZmZmYGwK5H4XoUru+\u002f"},"type":"bar","xaxis":"x2","yaxis":"y2"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#f2f5fa"},"error_y":{"color":"#f2f5fa"},"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"baxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"line":{"color":"#283442"}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"marker":{"line":{"color":"#283442"}},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#506784"},"line":{"color":"rgb(17,17,17)"}},"header":{"fill":{"color":"#2a3f5f"},"line":{"color":"rgb(17,17,17)"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#f2f5fa","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#f2f5fa"},"geo":{"bgcolor":"rgb(17,17,17)","lakecolor":"rgb(17,17,17)","landcolor":"rgb(17,17,17)","showlakes":true,"showland":true,"subunitcolor":"#506784"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"dark"},"paper_bgcolor":"rgb(17,17,17)","plot_bgcolor":"rgb(17,17,17)","polar":{"angularaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","radialaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"yaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"zaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"}},"shapedefaults":{"line":{"color":"#f2f5fa"}},"sliderdefaults":{"bgcolor":"#C8D4E3","bordercolor":"rgb(17,17,17)","borderwidth":1,"tickwidth":0},"ternary":{"aaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"baxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","caxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"title":{"x":0.05},"updatemenudefaults":{"bgcolor":"#506784","borderwidth":0},"xaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2}}},"xaxis":{"anchor":"y","domain":[0.0,1.0]},"yaxis":{"anchor":"x","domain":[0.625,1.0]},"xaxis2":{"anchor":"y2","domain":[0.55,1.0]},"yaxis2":{"anchor":"x2","domain":[0.0,0.375]},"annotations":[{"font":{"size":16},"showarrow":false,"text":"Cumulative Profit (Equity)","x":0.5,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Win \u002f Loss Ratio","x":0.225,"xanchor":"center","xref":"paper","y":0.375,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Performance by Symbol","x":0.775,"xanchor":"center","xref":"paper","y":0.375,"yanchor":"bottom","yref":"paper"}],"title":{"text":"\u003cb\u003eSMC PERFORMANCE DASHBOARD\u003c\u002fb\u003e | Net: $-6.22 | PF: 0.14"},"height":800,"showlegend":false},                        {"responsive": true}                    )                };            </script>        </div>
+                <div>                            <div id="042bf10e-c2da-413e-beb5-6f5f25030f37" class="plotly-graph-div" style="height:100%; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("042bf10e-c2da-413e-beb5-6f5f25030f37")) {                    Plotly.newPlot(                        "042bf10e-c2da-413e-beb5-6f5f25030f37",                        [{"hovertemplate":"Setup=%{x}\u003cbr\u003eProfit=%{marker.color}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"","marker":{"color":{"dtype":"f8","bdata":"AAAAAAAA4L+uR+F6FK7vv6RwPQrXo\u002fC\u002fKVyPwvUo+L9xPQrXo3ABwA=="},"coloraxis":"coloraxis","pattern":{"shape":""}},"name":"","orientation":"v","showlegend":false,"textposition":"auto","x":["PDL_Sweep|Asian_Sweep|SMT_bullish|FVG|iFVG","FVG|iFVG","Asian_Sweep|SMT_bullish|FVG|iFVG","SMT_bullish|FVG","SMT_bullish|FVG|iFVG"],"xaxis":"x","y":{"dtype":"f8","bdata":"AAAAAAAA4L+uR+F6FK7vv6RwPQrXo\u002fC\u002fKVyPwvUo+L9xPQrXo3ABwA=="},"yaxis":"y","type":"bar"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#f2f5fa"},"error_y":{"color":"#f2f5fa"},"marker":{"line":{"color":"rgb(17,17,17)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"baxis":{"endlinecolor":"#A2B1C6","gridcolor":"#506784","linecolor":"#506784","minorgridcolor":"#506784","startlinecolor":"#A2B1C6"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"line":{"color":"#283442"}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"marker":{"line":{"color":"#283442"}},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#506784"},"line":{"color":"rgb(17,17,17)"}},"header":{"fill":{"color":"#2a3f5f"},"line":{"color":"rgb(17,17,17)"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#f2f5fa","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#f2f5fa"},"geo":{"bgcolor":"rgb(17,17,17)","lakecolor":"rgb(17,17,17)","landcolor":"rgb(17,17,17)","showlakes":true,"showland":true,"subunitcolor":"#506784"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"dark"},"paper_bgcolor":"rgb(17,17,17)","plot_bgcolor":"rgb(17,17,17)","polar":{"angularaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","radialaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"yaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"},"zaxis":{"backgroundcolor":"rgb(17,17,17)","gridcolor":"#506784","gridwidth":2,"linecolor":"#506784","showbackground":true,"ticks":"","zerolinecolor":"#C8D4E3"}},"shapedefaults":{"line":{"color":"#f2f5fa"}},"sliderdefaults":{"bgcolor":"#C8D4E3","bordercolor":"rgb(17,17,17)","borderwidth":1,"tickwidth":0},"ternary":{"aaxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"baxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""},"bgcolor":"rgb(17,17,17)","caxis":{"gridcolor":"#506784","linecolor":"#506784","ticks":""}},"title":{"x":0.05},"updatemenudefaults":{"bgcolor":"#506784","borderwidth":0},"xaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#283442","linecolor":"#506784","ticks":"","title":{"standoff":15},"zerolinecolor":"#283442","zerolinewidth":2}}},"xaxis":{"anchor":"y","domain":[0.0,1.0],"title":{"text":"Setup"}},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"Profit"}},"coloraxis":{"colorbar":{"title":{"text":"Profit"}},"colorscale":[[0.0,"#FF5252"],[1.0,"#00E676"]]},"legend":{"tracegroupgap":0},"title":{"text":"Best Performing Setups"},"barmode":"relative"},                        {"responsive": true}                    )                };            </script>        </div>
+            </div>
+            <div class="table-container">
+                <h3>📜 Trade History</h3>
+                <table border="1" class="dataframe table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Date</th>
+      <th>Ticket</th>
+      <th>Symbol</th>
+      <th>Type</th>
+      <th>Outcome</th>
+      <th>Setup</th>
+      <th>Score</th>
+      <th>Profit</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>2026-02-10 13:15:37</td>
+      <td>2344667463</td>
+      <td>EURUSDm</td>
+      <td>BUY</td>
+      <td>SL</td>
+      <td>SMT_bullish|FVG|iFVG</td>
+      <td>81.0</td>
+      <td>-0.51</td>
+    </tr>
+    <tr>
+      <td>2026-02-10 12:04:19</td>
+      <td>2344234268</td>
+      <td>EURUSDm</td>
+      <td>BUY</td>
+      <td>SL</td>
+      <td>SMT_bullish|FVG|iFVG</td>
+      <td>74.0</td>
+      <td>-0.53</td>
+    </tr>
+    <tr>
+      <td>2026-02-04 12:01:35</td>
+      <td>2306277229</td>
+      <td>GBPUSDm</td>
+      <td>BUY</td>
+      <td>SL</td>
+      <td>PDL_Sweep|Asian_Sweep|SMT_bullish|FVG|iFVG</td>
+      <td>87.0</td>
+      <td>-0.50</td>
+    </tr>
+    <tr>
+      <td>2026-02-04 11:00:43</td>
+      <td>2305873624</td>
+      <td>GBPUSDm</td>
+      <td>BUY</td>
+      <td>SL</td>
+      <td>SMT_bullish|FVG|iFVG</td>
+      <td>83.0</td>
+      <td>-0.51</td>
+    </tr>
+    <tr>
+      <td>2026-02-03 15:05:48</td>
+      <td>2299169282</td>
+      <td>GBPUSDm</td>
+      <td>BUY</td>
+      <td>SL</td>
+      <td>SMT_bullish|FVG|iFVG</td>
+      <td>93.0</td>
+      <td>-0.51</td>
+    </tr>
+    <tr>
+      <td>2026-02-02 12:03:01</td>
+      <td>2287963045</td>
+      <td>GBPUSDm</td>
+      <td>BUY</td>
+      <td>SL</td>
+      <td>Asian_Sweep|SMT_bullish|FVG|iFVG</td>
+      <td>98.0</td>
+      <td>-0.51</td>
+    </tr>
+    <tr>
+      <td>2026-02-02 06:10:56</td>
+      <td>2285277763</td>
+      <td>EURUSDm</td>
+      <td>BUY</td>
+      <td>Manual_Loss</td>
+      <td>SMT_bullish|FVG|iFVG</td>
+      <td>100.0</td>
+      <td>-0.49</td>
+    </tr>
+    <tr>
+      <td>2026-01-28 10:23:08</td>
+      <td>2253268541</td>
+      <td>GBPUSDm</td>
+      <td>BUY</td>
+      <td>SL</td>
+      <td>Asian_Sweep|SMT_bullish|FVG|iFVG</td>
+      <td>94.0</td>
+      <td>-0.53</td>
+    </tr>
+    <tr>
+      <td>2026-01-28 08:25:27</td>
+      <td>2252154781</td>
+      <td>GBPUSDm</td>
+      <td>BUY</td>
+      <td>SL</td>
+      <td>SMT_bullish|FVG</td>
+      <td>82.0</td>
+      <td>-0.51</td>
+    </tr>
+    <tr>
+      <td>2026-01-27 16:50:02</td>
+      <td>2247861407</td>
+      <td>USDJPYm</td>
+      <td>BUY</td>
+      <td>Manual_Loss</td>
+      <td>FVG|iFVG</td>
+      <td>88.0</td>
+      <td>-0.48</td>
+    </tr>
+    <tr>
+      <td>2026-01-27 16:09:22</td>
+      <td>2247387697</td>
+      <td>USDJPYm</td>
+      <td>BUY</td>
+      <td>Manual_Loss</td>
+      <td>FVG|iFVG</td>
+      <td>71.0</td>
+      <td>-0.25</td>
+    </tr>
+    <tr>
+      <td>2026-01-27 15:59:08</td>
+      <td>2247272742</td>
+      <td>EURUSDm</td>
+      <td>BUY</td>
+      <td>Manual_Profit</td>
+      <td>SMT_bullish|FVG|iFVG</td>
+      <td>91.0</td>
+      <td>0.21</td>
+    </tr>
+    <tr>
+      <td>2026-01-27 14:19:57</td>
+      <td>2246464472</td>
+      <td>EURUSDm</td>
+      <td>BUY</td>
+      <td>Manual_Profit</td>
+      <td>SMT_bullish|FVG|iFVG</td>
+      <td>90.0</td>
+      <td>0.12</td>
+    </tr>
+    <tr>
+      <td>2026-01-27 12:14:23</td>
+      <td>2245706854</td>
+      <td>EURUSDm</td>
+      <td>BUY</td>
+      <td>Manual_Profit</td>
+      <td>SMT_bullish|FVG|iFVG</td>
+      <td>96.0</td>
+      <td>0.28</td>
+    </tr>
+    <tr>
+      <td>2026-01-27 12:09:17</td>
+      <td>2245674004</td>
+      <td>USDJPYm</td>
+      <td>BUY</td>
+      <td>Manual_Loss</td>
+      <td>FVG|iFVG</td>
+      <td>71.0</td>
+      <td>-0.37</td>
+    </tr>
+    <tr>
+      <td>2026-01-27 11:59:05</td>
+      <td>2245604498</td>
+      <td>EURUSDm</td>
+      <td>BUY</td>
+      <td>SL</td>
+      <td>SMT_bullish|FVG|iFVG</td>
+      <td>92.0</td>
+      <td>-0.51</td>
+    </tr>
+    <tr>
+      <td>2026-01-27 09:46:35</td>
+      <td>2244812653</td>
+      <td>EURUSDm</td>
+      <td>BUY</td>
+      <td>SL</td>
+      <td>SMT_bullish|FVG</td>
+      <td>96.0</td>
+      <td>-0.51</td>
+    </tr>
+    <tr>
+      <td>2026-01-26 18:24:51</td>
+      <td>2240842308</td>
+      <td>USDJPYm</td>
+      <td>BUY</td>
+      <td>Manual_Profit</td>
+      <td>FVG|iFVG</td>
+      <td>94.0</td>
+      <td>0.11</td>
+    </tr>
+    <tr>
+      <td>2026-01-26 13:04:47</td>
+      <td>2238401870</td>
+      <td>GBPUSDm</td>
+      <td>BUY</td>
+      <td>Manual_Profit</td>
+      <td>SMT_bullish|FVG|iFVG</td>
+      <td>71.0</td>
+      <td>0.27</td>
+    </tr>
+    <tr>
+      <td>2026-01-26 12:28:58</td>
+      <td>2238239517</td>
+      <td>EURUSDm</td>
+      <td>BUY</td>
+      <td>Manual_Loss</td>
+      <td>SMT_bullish|FVG</td>
+      <td>84.0</td>
+      <td>-0.49</td>
+    </tr>
+  </tbody>
+</table>
+            </div>
+        </body>
+        </html>
+        

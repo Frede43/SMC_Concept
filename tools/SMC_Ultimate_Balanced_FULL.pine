@@ -3,7 +3,7 @@
 // Modifications & Dashboard by Antigravity (SMC Ultimate Fusion)
 
 //@version=5
-strategy('SMC Ultra [Pro]', 'SMC Ultra [Pro]', overlay = true, initial_capital = 10000, default_qty_type = strategy.fixed, currency = currency.USD, commission_type = strategy.commission.percent, commission_value = 0.003, slippage=1, max_labels_count = 500, max_lines_count = 500, max_boxes_count = 500, calc_on_every_tick = true)
+strategy('SMC Ultra [Sniper Edition]', 'SMC Ultra [Sniper Edition]', overlay = true, initial_capital = 10000, default_qty_type = strategy.fixed, currency = currency.USD, commission_type = strategy.commission.percent, commission_value = 0.003, slippage=1, max_labels_count = 500, max_lines_count = 500, max_boxes_count = 500, calc_on_every_tick = true)
 
 //---------------------------------------------------------------------------------------------------------------------}
 // 🎯 OPTIMIZED ULTRA MODE - PHILOSOPHY (INSTITUTIONAL SMC)
@@ -78,64 +78,93 @@ GAPS_GROUP                      = 'Fair Value Gaps'
 LEVELS_GROUP                    = 'Highs & Lows MTF'
 ZONES_GROUP                     = 'Premium & Discount Zones'
 
-// 🎨 BALANCED MODE SETTINGS
-grp_signals = "🎯 TRADE SIGNALS (BALANCED MODE)"
-show_signals = input.bool(true, "Show Buy/Sell Signals", group=grp_signals, tooltip="Show entries when price mitigates an OB/FVG and aligns with trend")
-sig_size     = input.string(size.small, "Signal Label Size", options=[size.tiny, size.small, size.normal], group=grp_signals)
+//---------------------------------------------------------------------------------------------------------------------}
+// ⚡ SETTINGS & INPUTS (OPTIMIZED & CLEANED)
+//---------------------------------------------------------------------------------------------------------------------{
 
-// 🆕 BALANCED FILTERS (Désactivés par défaut)
-use_mtf_filter = input.bool(false, "❌ MTF Confirmation (DISABLED)", group=grp_signals, tooltip="BALANCED: Désactivé pour plus de trades")
-htf_tf         = input.timeframe('240', "HTF Timeframe", group=grp_signals)
+// 🎯 STRATEGY MODE
+grp_strat   = "🔥 STRATEGY MODE"
+mode_sniper = input.bool(false, "ACTIVATE SNIPER MODE (Extreme Precision)", group=grp_strat, tooltip="Reduces frequency (15-20 trades/yr) but aims for 80%+ Winrate using strict institutional filters (Sweep + MTF + SMT).")
+mode_strict = input.bool(true,  "Strict Non-Repainting Mode", group=grp_strat, tooltip="Waits for candle close")
 
-use_rm_labels  = input.bool(true, "Show SL/TP Labels", group=grp_signals, tooltip="Calculate and show Stop Loss and Take Profit levels")
-risk_per_trade = input.float(1.0, "Risk Per Trade (%)", minval=0.1, step=0.1, group=grp_signals, tooltip="Percent of equity to risk on each trade based on Stop Loss distance")
-rr_ratio       = input.float(3.0, "Institutional RR Target", minval=0.1, step=0.1, group=grp_signals, tooltip="Targeting a consistent 3.0 RR")
-sl_padding_atr = input.float(1.0, "SL Safety (ATR)", minval=0.0, step=0.1, group=grp_signals, tooltip="Safety buffer: 1.0 ATR")
-use_be         = input.bool(true, "Use Break-Even", group=grp_signals, tooltip="Move SL to entry after 1.1 RR")
-be_target      = input.float(1.1, "BE Trigger (RR)", minval=0.1, step=0.1, group=grp_signals, tooltip="Sync with Partial TP for Risk-Free Trade")
-use_partial_tp = input.bool(true, "Use Partial Take Profit", group=grp_signals, tooltip="Close 30% at 1.1 RR")
-partial_rr     = input.float(1.1, "Partial TP (RR)", minval=0.5, step=0.1, group=grp_signals, tooltip="Fast secure at 1.1 RR")
+// 🛡️ RISK MANAGEMENT
+grp_risk    = "🛡️ RISK MANAGEMENT"
+risk_per_trade = input.float(1.0, "Risk Per Trade (%)", minval=0.1, step=0.1, group=grp_risk)
+rr_ratio       = input.float(3.0, "Base RR Target", minval=0.1, step=0.1, group=grp_risk)
+use_be         = input.bool(true, "Move SL to Breakeven (1.1 RR)", group=grp_risk)
+use_partial_tp = input.bool(true, "Take Partial Profits (30% @ 1.1 RR)", group=grp_risk)
+partial_rr     = input.float(1.1, "Partial TP Level (RR)", minval=0.5, step=0.1, group=grp_risk)
+sl_padding_atr = input.float(1.0, "SL Padding (ATR)", minval=0.0, step=0.1, group=grp_risk)
+max_total_dd_pct = input.float(10.0, "Max Total Drawdown Limit (%)", minval=1.0, step=0.5, group=grp_risk)
+use_max_dd     = input.bool(true, "Enforce Max Drawdown", group=grp_risk)
 
-use_vol_filter = input.bool(true, "✅ Volume Filter (ULTRA)", group=grp_signals, tooltip="ULTRA OPTIMIZED: Seuil à 0.5x pour plus de trades")
-vol_mult       = input.float(0.5, "Volume Multiplier", minval=0.3, step=0.1, group=grp_signals, tooltip="ULTRA: 0.5x (Balance bruit/opportunités) - Institutional Standard")
+// 📊 FILTERS & LOGIC
+grp_filters = "📊 INSTITUTIONAL FILTERS"
+use_weekly_filter = input.bool(true, "Weekly Trend (Top-Down)", group=grp_filters)
+use_daily_align   = input.bool(true, "Daily Alignment", group=grp_filters)
+use_news_filter   = input.bool(true, "News Filter (High Impact)", group=grp_filters)
+use_killzone_filter = input.bool(true, "Session Killzones (London/NY)", group=grp_filters)
+use_vol_filter    = input.bool(true, "Volume Filter", group=grp_filters)
+vol_mult          = input.float(0.5, "Volume Multiplier (Min)", minval=0.1, step=0.1, group=grp_filters)
+use_bos_filter    = input.bool(true, "BOS Strength Filter", group=grp_filters)
+bos_threshold     = input.float(0.4, "BOS Threshold (ATR)", minval=0.1, step=0.1, group=grp_filters)
+mitigation_buffer_atr = input.float(0.1, "Mitigation Buffer (ATR)", minval=0.0, step=0.05, group=grp_filters)
 
-use_bos_filter = input.bool(true, "✅ BOS Strength (ULTRA)", group=grp_signals, tooltip="ULTRA OPTIMIZED: Seuil à 0.4 ATR pour capturer les breaks valides")
-bos_threshold  = input.float(0.4, "BOS Strength Threshold", minval=0.1, step=0.1, group=grp_signals, tooltip="ULTRA: 0.4 ATR (Équilibre qualité/fréquence) - SMC Standard")
+// 🧠 ADAPTIVE INTELLIGENCE
+grp_adapt   = "🧠 ADAPTIVE PARAMETERS"
+use_adaptive_bos = input.bool(true, "Adaptive BOS (Volatility Based)", group=grp_adapt)
+use_adaptive_rr  = input.bool(true, "Adaptive RR (ADR Based)", group=grp_adapt)
+use_adaptive_pd  = input.bool(true, "Adaptive P/D (Momentum Based)", group=grp_adapt)
+use_structural_trail = input.bool(true, "Smart Structural Trailing", group=grp_adapt)
 
-// 🆕 REALISM & FLEXIBILITY
-mitigation_buffer_atr = input.float(0.1, "Mitigation Buffer (ATR)", minval=0.0, step=0.05, group=grp_signals, tooltip="Allows entry if price misses the zone by this amount (Fixes rigitidy/front-running)")
+// 🔍 SNIPER SPECIFIC (Manual Overrides)
+grp_sniper  = "🎯 SNIPER COMPONENTS (PRO)"
+use_pro_mtf   = input.bool(false, "Require MTF Alignment (4H)", group=grp_sniper, tooltip="Forced TRUE in Sniper Mode")
+use_pro_sweep = input.bool(false, "Require Liquidity Sweep", group=grp_sniper, tooltip="Forced TRUE in Sniper Mode")
+use_pro_smt   = input.bool(false, "Require SMT Divergence", group=grp_sniper, tooltip="Forced TRUE in Sniper Mode")
+smt_ticker    = input.symbol("FX:GBPUSD", "SMT Ticker", group=grp_sniper)
 
+// 🎨 VISUALS
+grp_visual  = "🎨 VISUALS & DASHBOARD"
+show_dash   = input.bool(true, "Show Dashboard", group=grp_visual)
+show_signals= input.bool(true, "Show Signals", group=grp_visual)
+show_structure = input.bool(true, "Show Structure", group=grp_visual)
+show_obs    = input.bool(true, "Show Order Blocks", group=grp_visual)
+show_fvgs   = input.bool(true, "Show FVGs", group=grp_visual)
+show_sweeps = input.bool(true, "Show Sweeps", group=grp_visual)
+show_breakers = input.bool(true, "Show Breakers", group=grp_visual)
+clean_mode  = input.bool(false, "Clean Mode", group=grp_visual)
 
-use_smt_filter = input.bool(false, "❌ SMT Divergence (DISABLED)", group=grp_signals, tooltip="BALANCED: Désactivé, pas pertinent pour toutes les paires")
-smt_ticker     = input.symbol("FX:GBPUSD", "SMT Correlated Ticker", group=grp_signals)
+// ⚙️ ADVANCED
+grp_adv     = "⚙️ SYSTEM INTERNALS"
+htf_tf         = input.timeframe('240', "MTF Timeframe", group=grp_adv)
+news_hours_before = input.int(2, "News Block (Hours Before)", group=grp_adv)
+news_hours_after  = input.int(1, "News Block (Hours After)", group=grp_adv)
+strict_delay      = input.int(1, "Confirmation Delay", group=grp_adv)
 
-// 🆕 TOP-DOWN FILTERS (Weekly → Daily → Intraday) - INSTITUTIONAL APPROACH
-use_weekly_filter = input.bool(true, "✅ Weekly Trend Filter (TOP-DOWN)", group=grp_signals, tooltip="CORE FILTER #1: Trade with the macro trend - Institutional Standard")
-use_daily_align = input.bool(true, "✅ Daily Trend Alignment", group=grp_signals, tooltip="CORE FILTER #2: Confirm Weekly with Daily structure - Never fade the trend")
-use_internal_trend = input.bool(true, "✅ Trade Internal Trend", group=grp_signals, tooltip="ULTRA: Use Internal Structure (faster entries) vs Swing (slower but safer)")
-use_pd_filter   = input.bool(true, "✅ Premium/Discount (ULTRA)", group=grp_signals, tooltip="CORE FILTER #3: Optimized à 65% (Buy discount, Sell premium) - Institutional")
-use_sweep_conf  = input.bool(false, "❌ Liquidity Sweep (OPTIONAL)", group=grp_signals, tooltip="ULTRA OPTIMIZED: Disabled - Too rare, blocks 80% of setups")
-use_adr_filter  = input.bool(false, "❌ ADR Exhaustion (OPTIONAL)", group=grp_signals, tooltip="ULTRA OPTIMIZED: Disabled - Blocks strong trends and runs")
-max_daily_loss  = input.int(2, "Max Daily Trades Lost", minval=1, group=grp_signals, tooltip="Stop trading for the day after X losing trades")
-max_drawdown_pct= input.float(3.0, "Max Daily Drawdown (%)", minval=0.1, step=0.1, group=grp_signals, tooltip="Stop trading if today's loss exceeds X% of capital")
+// CONSTANTS (Internal)
+// Colors & Styles (Already Defined Above)
+
+// 🆕 ASSET DETECTION (PRO V3) - MOVED UP FOR SCOPE VISIBILITY
+is_gold    = str.contains(syminfo.ticker, "XAU") or str.contains(syminfo.ticker, "GOLD")
+is_forex   = syminfo.type == "forex" or syminfo.type == "currency"
+is_indices = syminfo.type == "index" or str.contains(syminfo.ticker, "US30") or str.contains(syminfo.ticker, "NAS") or str.contains(syminfo.ticker, "SPX") or str.contains(syminfo.ticker, "DE40")
+is_high_vol_asset = is_gold or is_indices
 
 // 🆕 PRO V2: NEWS FILTER (CRITICAL - PROP FIRM STANDARD)
 grp_news = "📰 NEWS FILTER (PRO V2)"
-use_news_filter = input.bool(true, "✅ Avoid High Impact News", group=grp_news, tooltip="CRITICAL: Block trades around NFP, FOMC, CPI - Institutional Standard")
-news_hours_before = input.int(2, "Hours Before News", minval=0, maxval=12, group=grp_news, tooltip="Stop trading X hours before major news")
-news_hours_after = input.int(1, "Hours After News", minval=0, maxval=6, group=grp_news, tooltip="Resume trading X hours after news release")
-
+// use_news_filter defined earlier in filters
+// news_hours defined earlier in advanced
 // News Schedule (NY Time) - Major Market Movers
 use_nfp_filter = input.bool(true, "Block NFP (1st Friday)", group=grp_news, tooltip="Non-Farm Payrolls - 08:30 NY Time")
 use_fomc_filter = input.bool(true, "Block FOMC Days", group=grp_news, tooltip="Federal Reserve Meetings - 14:00 NY Time")
 use_cpi_filter = input.bool(true, "Block CPI Days", group=grp_news, tooltip="Consumer Price Index - 08:30 NY Time")
 use_session_start = input.bool(true, "Avoid Session Opens", group=grp_news, tooltip="No trades 30min before/after London/NY open")
+use_post_news_only = input.bool(false, "Post-News Mode (Experimental)", group=grp_news, tooltip="Allows entries 1h after news if structure is confirmed")
 
 // 🆕 PRO V2: MAX TOTAL DRAWDOWN (PROP FIRM REQUIREMENT)
-grp_dd = "🛡️ TOTAL DRAWDOWN PROTECTION (PRO V2)"
-use_max_dd = input.bool(true, "✅ Enable Max Total Drawdown", group=grp_dd, tooltip="CRITICAL: Stop trading if total DD exceeds limit - Prop Firm Standard")
-max_total_dd_pct = input.float(10.0, "Max Total Drawdown (%)", minval=1.0, step=0.5, group=grp_dd, tooltip="Stop all trading if equity drops X% from ATH (Prop Firm: 10%)")
-dd_recovery_days = input.int(3, "Recovery Period (Days)", minval=1, group=grp_dd, tooltip="Days to wait after hitting max DD before resuming")
+main_dd_group = grp_risk // Assign recovery days to risk group
+dd_recovery_days = input.int(3, "Recovery Period (Days)", minval=1, group=main_dd_group, tooltip="Days to wait after hitting max DD before resuming")
 
 // 🆕 PRO V2: CORRELATION MANAGEMENT (HEDGE FUND STANDARD)
 grp_corr = "🔗 CORRELATION MANAGEMENT (PRO V2)"
@@ -143,116 +172,121 @@ use_corr_limit = input.bool(true, "✅ Limit Correlated Positions", group=grp_co
 max_correlated_trades = input.int(2, "Max Correlated Positions", minval=1, maxval=5, group=grp_corr, tooltip="Maximum positions in same currency group (e.g., USD pairs)")
 max_total_exposure = input.float(3.0, "Max Total Risk (%)", minval=1.0, step=0.5, group=grp_corr, tooltip="Maximum combined risk across all open positions")
 
-// Currency Groups for Correlation Detection
-// Group 1: USD pairs (EUR/USD, GBP/USD, AUD/USD, NZD/USD, USD/CAD, USD/CHF, USD/JPY)
-// Group 2: EUR pairs (EUR/GBP, EUR/JPY, EUR/CHF, EUR/AUD)
-// Group 3: Commodities (XAU/USD, XAG/USD, Oil)
-// Group 4: Indices (SPX, NAS, DJI)
-
 // 🆕 PRO V2: ADAPTIVE PARAMETERS (QUANT STANDARD)
-grp_adaptive = "🔄 ADAPTIVE PARAMETERS (PRO V2)"
-use_adaptive_bos = input.bool(true, "✅ Adaptive BOS Threshold", group=grp_adaptive, tooltip="Adjust BOS threshold based on market volatility - Quant Standard")
-use_adaptive_rr = input.bool(true, "✅ Adaptive RR Ratio", group=grp_adaptive, tooltip="Adjust RR based on ADR exhaustion - Smart Money Standard")
-use_adaptive_pd = input.bool(true, "✅ Adaptive Premium/Discount", group=grp_adaptive, tooltip="Relax P/D zones in strong momentum (ADX > 25)")
+// Adaptive Ranges (using grp_adapt)
+box_threshold_group = grp_adapt
+bos_threshold_low = input.float(0.3, "BOS Min (Low Vol)", minval=0.1, step=0.1, group=box_threshold_group, tooltip="BOS threshold when ATR is in bottom 20%")
+bos_threshold_high = input.float(0.6, "BOS Max (High Vol)", minval=0.1, step=0.1, group=box_threshold_group, tooltip="BOS threshold when ATR is in top 20%")
 
-// Adaptive Ranges
-bos_threshold_low = input.float(0.3, "BOS Min (Low Vol)", minval=0.1, step=0.1, group=grp_adaptive, tooltip="BOS threshold when ATR is in bottom 20%")
-bos_threshold_high = input.float(0.6, "BOS Max (High Vol)", minval=0.1, step=0.1, group=grp_adaptive, tooltip="BOS threshold when ATR is in top 20%")
+rr_ratio_low = input.float(2.0, "RR Min (Exhausted)", minval=1.0, step=0.5, group=box_threshold_group, tooltip="RR when ADR > 150% (take profit earlier)")
+rr_ratio_high = input.float(4.0, "RR Max (Calm)", minval=1.0, step=0.5, group=box_threshold_group, tooltip="RR when ADR < 80% (let it run)")
 
-rr_ratio_low = input.float(2.0, "RR Min (Exhausted)", minval=1.0, step=0.5, group=grp_adaptive, tooltip="RR when ADR > 150% (take profit earlier)")
-rr_ratio_high = input.float(4.0, "RR Max (Calm)", minval=1.0, step=0.5, group=grp_adaptive, tooltip="RR when ADR < 80% (let it run)")
+pd_limit_momentum = input.float(0.75, "P/D Limit (Momentum)", minval=0.5, maxval=0.9, step=0.05, group=box_threshold_group, tooltip="Allow shallow pullbacks when ADX > 25")
 
-pd_limit_momentum = input.float(0.75, "P/D Limit (Momentum)", minval=0.5, maxval=0.9, step=0.05, group=grp_adaptive, tooltip="Allow shallow pullbacks when ADX > 25")
+// 🆕 PRO V3: EXIT MANAGEMENT
+grp_exit_v3 = "🏃 ADVANCED EXIT (PRO V3)"
+// use_structural_trail defined earlier
+trail_step_atr = input.float(1.0, "Trail Offset (ATR)", minval=0.0, step=0.1, group=grp_exit_v3, tooltip="Distance from structural extreme")
+trail_activation_rr = input.float(1.5, "Trail Activation (RR)", minval=1.0, step=0.1, group=grp_exit_v3, tooltip="Start trailing after X RR")
 
 grp_dash    = "🚀 PRO DASHBOARD"
-show_dash   = input.bool(true, "Show Institutional Dashboard", group=grp_dash)
+// show_dash defined earlier
 show_sig_dash = input.bool(true, "Show BIG Signal Alert", group=grp_dash, tooltip="Displays a large box with the current signal status")
 dash_size   = input.string(size.small, "Dashboard Size", options=[size.tiny, size.small, size.normal], group=grp_dash)
 
-grp_visual  = "🎨 VISUAL ENHANCEMENTS"
-show_sweeps = input.bool(true, "Show Liquidity Sweeps (X)", group=grp_visual, tooltip="Marks candle wicks that sweep a level but close inside")
+// grp_visual already defined
+// show_sweeps already defined
 show_pd_bg  = input.bool(true, "Show Premium/Discount Background", group=grp_visual, tooltip="Red/Green background based on current dealing range")
 c_prem_fill = input.color(color.new(#FF5252, 92), "Premium Zone Fill", group=grp_visual)
 c_disc_fill = input.color(color.new(#00E676, 92), "Discount Zone Fill", group=grp_visual)
 show_pdh_pdl= input.bool(true, "Show PDH / PDL Labels", group=grp_visual)
 show_weekly_levels = input.bool(true, "Show Weekly High/Low", group=grp_visual, tooltip="Display Weekly pivots as major liquidity zones")
-clean_mode = input.bool(false, "Clean Mode (Less Clutter)", group=grp_visual, tooltip="Hides some elements on lower timeframes to reduce visual noise")
+// clean_mode already defined
 
 grp_breaker = "💥 BREAKER BLOCKS (SMC PRO)"
-show_breakers = input.bool(true, "Show Breaker Blocks", group=grp_breaker, tooltip="Mitigated OB that gets broken = Very strong reversal signal")
+// show_breakers already defined
 breaker_bull_color = input.color(color.new(#00BCD4, 75), "Bullish Breaker", group=grp_breaker)
 breaker_bear_color = input.color(color.new(#FF6D00, 75), "Bearish Breaker", group=grp_breaker)
 
 grp_killzone = "⏰ ICT KILLZONES"
-use_killzone_filter = input.bool(true, "✅ Require Killzone for Entries (ICT)", group=grp_killzone, tooltip="CORE FILTER: Trade only during London/NY sessions. Disable for 24/7 backtest")
+// use_killzone_filter already defined in filters group
 show_killzones = input.bool(true, "Show ICT Killzones", group=grp_killzone, tooltip="London (02-05h), NY AM (08:30-11h), NY PM (13:30-16h) NY Time")
 kz_london_color = input.color(color.new(#2196F3, 90), "London KZ", group=grp_killzone)
 kz_nyam_color = input.color(color.new(#FFC107, 90), "NY AM KZ", group=grp_killzone)
 kz_nypm_color = input.color(color.new(#9C27B0, 90), "NY PM KZ", group=grp_killzone)
 kz_asian_color = input.color(color.new(#00BCD4, 90), "Asian KZ", group=grp_killzone)
 
-grp_advanced = "⚙️ ADVANCED & UX"
-strict_mode   = input.bool(true, "Strict Non-Repainting Mode", group=grp_advanced, tooltip="Waits for X bars before confirming structure (Less repainting, more lag)")
-strict_delay  = input.int(1, "Confirmation Delay (Bars)", minval=1, group=grp_advanced)
-show_targets  = input.bool(true, "Show Projected Target Lines", group=grp_advanced)
+// 📊 FILTERS & LOGIC (Extended)
+// Additional filters that were missed
+use_internal_trend = input.bool(true, "✅ Trade Internal Trend", group=grp_filters, tooltip="ULTRA: Use Internal Structure (faster entries) vs Swing (slower but safer)")
+use_pd_filter   = input.bool(true, "✅ Premium/Discount (ULTRA)", group=grp_filters, tooltip="CORE FILTER #3: Optimized à 65% (Buy discount, Sell premium) - Institutional")
+use_sweep_conf  = input.bool(false, "❌ Liquidity Sweep (OPTIONAL)", group=grp_filters, tooltip="ULTRA OPTIMIZED: Disabled - Too rare, blocks 80% of setups")
+use_adr_filter  = input.bool(false, "❌ ADR Exhaustion (OPTIONAL)", group=grp_filters, tooltip="ULTRA OPTIMIZED: Disabled - Blocks strong trends and runs")
+use_smt_filter = input.bool(false, "❌ SMT Divergence (DISABLED)", group=grp_filters, tooltip="BALANCED: Désactivé, pas pertinent pour toutes les paires")
+use_mtf_filter = input.bool(false, "❌ MTF Confirmation (DISABLED)", group=grp_filters, tooltip="BALANCED: Désactivé pour plus de trades")
 
-// LUXALGO INPUTS
-modeInput                       = input.string( PRESENT,    'Mode',                     group = SMART_GROUP,    options = [HISTORICAL, PRESENT])
-styleInput                      = input.string( COLORED,    'Style',                    group = SMART_GROUP,    options = [COLORED, MONOCHROME])
-showTrendInput                  = input(        false,      'Color Candles',            group = SMART_GROUP)
+// 🛡️ RISK MANAGEMENT (Extended)
+use_rm_labels  = input.bool(true, "Show SL/TP Labels", group=grp_risk, tooltip="Show text labels for SL/TP")
+sig_size     = input.string(size.small, "Signal Label Size", options=[size.tiny, size.small, size.normal], group=grp_visual)
+be_target      = input.float(1.1, "BE Trigger (RR)", minval=0.1, step=0.1, group=grp_risk, tooltip="Sync with Partial TP for Risk-Free Trade")
+max_daily_loss  = input.int(2, "Max Daily Trades Lost", minval=1, group=grp_risk, tooltip="Stop trading for the day after X losing trades")
+max_drawdown_pct= input.float(3.0, "Max Daily Drawdown (%)", minval=0.1, step=0.1, group=grp_risk, tooltip="Stop trading if today's loss exceeds X% of capital")
 
-showInternalsInput              = input(        false,      'Show Internal Structure',  group = INTERNAL_GROUP) // ⚡ CLEAN: False par défaut
-showInternalBullInput           = input.string( ALL,        'Bullish Structure',        group = INTERNAL_GROUP, inline = 'ibull', options = [ALL,BOS,CHOCH])
-internalBullColorInput          = input(        GREEN,      '',                         group = INTERNAL_GROUP, inline = 'ibull')
-showInternalBearInput           = input.string( ALL,        'Bearish Structure' ,       group = INTERNAL_GROUP, inline = 'ibear', options = [ALL,BOS,CHOCH])
-internalBearColorInput          = input(        RED,        '',                         group = INTERNAL_GROUP, inline = 'ibear')
-internalFilterConfluenceInput   = input(        false,      'Confluence Filter',        group = INTERNAL_GROUP)
-internalStructureSize           = input.string( TINY,       'Internal Label Size',      group = INTERNAL_GROUP, options = [TINY,SMALL,NORMAL])
+// INTERNAL PARAMS (Hidden/Fixed for logic)
+modeInput = 'Present'
+styleInput = 'Colored'
+showTrendInput = false
+showInternalsInput = false // Internal structure hidden by default for clean look
+internalOrderBlocksSizeInput = 5
+swingOrderBlocksSizeInput = 5
+showInternalBullInput           = 'All'
+internalBullColorInput          = GREEN
+showInternalBearInput           = 'All'
+internalBearColorInput          = RED
+internalFilterConfluenceInput   = false
+internalStructureSize           = TINY
 
-showStructureInput              = input(        true,       'Show Swing Structure',     group = SWING_GROUP)
-showSwingBullInput              = input.string( ALL,        'Bullish Structure',        group = SWING_GROUP,    inline = 'bull',    options = [ALL,BOS,CHOCH])
-swingBullColorInput             = input(        GREEN,      '',                         group = SWING_GROUP,    inline = 'bull')
-showSwingBearInput              = input.string( ALL,        'Bearish Structure',        group = SWING_GROUP,    inline = 'bear',    options = [ALL,BOS,CHOCH])
-swingBearColorInput             = input(        RED,        '',                         group = SWING_GROUP,    inline = 'bear')
-swingStructureSize              = input.string( SMALL,      'Swing Label Size',         group = SWING_GROUP,    options = [TINY,SMALL,NORMAL])
-showSwingsInput                 = input(        false,      'Show Swings Points',       group = SWING_GROUP,    inline = 'swings')
-swingsLengthInput               = input.int(    20,         '',                         group = SWING_GROUP,    minval = 10,                inline = 'swings')
-showHighLowSwingsInput          = input(        true,       'Show Strong/Weak High/Low',group = SWING_GROUP)
+showStructureInput              = show_structure
+showSwingBullInput              = 'All'
+swingBullColorInput             = GREEN
+showSwingBearInput              = 'All'
+swingBearColorInput             = RED
+swingStructureSize              = SMALL
+showSwingsInput                 = show_structure
+swingsLengthInput               = 20
+showHighLowSwingsInput          = false
 
-showInternalOrderBlocksInput    = input(        true,       'Internal Order Blocks' ,   group = BLOCKS_GROUP,   inline = 'iob')
-internalOrderBlocksSizeInput    = input.int(    10,         '',                         group = BLOCKS_GROUP,   minval = 1, maxval = 20,                    inline = 'iob')
-showSwingOrderBlocksInput       = input(        true,       'Swing Order Blocks',       group = BLOCKS_GROUP,   inline = 'ob')
-swingOrderBlocksSizeInput       = input.int(    10,         '',                         group = BLOCKS_GROUP,   minval = 1, maxval = 20,                    inline = 'ob') 
-orderBlockFilterInput           = input.string( 'Atr',      'Order Block Filter',       group = BLOCKS_GROUP,   options = [ATR, RANGE])
-orderBlockMitigationInput       = input.string( HIGHLOW,    'Order Block Mitigation',   group = BLOCKS_GROUP,   options = [CLOSE,HIGHLOW])
-internalBullishOrderBlockColor  = input.color(color.new(#1848cc, 80), 'Internal Bullish OB',    group = BLOCKS_GROUP)
-internalBearishOrderBlockColor  = input.color(color.new(#b22833, 80), 'Internal Bearish OB',    group = BLOCKS_GROUP)
-swingBullishOrderBlockColor     = input.color(color.new(#1848cc, 80), 'Bullish OB',             group = BLOCKS_GROUP)
-swingBearishOrderBlockColor     = input.color(color.new(#b22833, 80), 'Bearish OB',             group = BLOCKS_GROUP)
+showInternalOrderBlocksInput    = show_obs
+showSwingOrderBlocksInput       = show_obs
+orderBlockFilterInput           = 'Atr'
+orderBlockMitigationInput       = HIGHLOW
+internalBullishOrderBlockColor  = color.new(#1848cc, 80)
+internalBearishOrderBlockColor  = color.new(#b22833, 80)
+swingBullishOrderBlockColor     = color.new(#1848cc, 80)
+swingBearishOrderBlockColor     = color.new(#b22833, 80)
 
+showEqualHighsLowsInput         = true
+equalHighsLowsLengthInput       = 3
+equalHighsLowsThresholdInput    = 0.1
+equalHighsLowsSizeInput         = TINY
 
-showEqualHighsLowsInput         = input(        true,       'Equal High/Low',           group = EQUAL_GROUP)
-equalHighsLowsLengthInput       = input.int(    3,          'Bars Confirmation',        group = EQUAL_GROUP,    minval = 1)
-equalHighsLowsThresholdInput    = input.float(  0.1,        'Threshold',                group = EQUAL_GROUP,    minval = 0, maxval = 0.5, step = 0.1)
-equalHighsLowsSizeInput         = input.string( TINY,       'Label Size',               group = EQUAL_GROUP,    options = [TINY,SMALL,NORMAL])
+showFairValueGapsInput          = show_fvgs
+fairValueGapsThresholdInput     = true
+fairValueGapsTimeframeInput     = ''
+fairValueGapsBullColorInput     = color.new(#00bcd4, 85)
+fairValueGapsBearColorInput     = color.new(#ff9800, 85)
 
-showFairValueGapsInput          = input(        true,       'Fair Value Gaps',          group = GAPS_GROUP) // Enabled by default for Pro user
-fairValueGapsThresholdInput     = input(        true,       'Auto Threshold',           group = GAPS_GROUP)
-fairValueGapsTimeframeInput     = input.timeframe('',       'Timeframe',                group = GAPS_GROUP)
-fairValueGapsBullColorInput     = input.color(color.new(#00bcd4, 85), 'Bullish FVG (Cyan)', group = GAPS_GROUP)
-fairValueGapsBearColorInput     = input.color(color.new(#ff9800, 85), 'Bearish FVG (Orange)', group = GAPS_GROUP)
+fairValueGapsExtendInput        = 1
 
-fairValueGapsExtendInput        = input.int(    1,          'Extend FVG',               group = GAPS_GROUP,     minval = 0)
-
-showDailyLevelsInput            = input(        false,      'Daily',    group = LEVELS_GROUP,   inline = 'daily')
-dailyLevelsStyleInput           = input.string( SOLID,      '',         group = LEVELS_GROUP,   inline = 'daily',   options = [SOLID,DASHED,DOTTED])
-dailyLevelsColorInput           = input(        BLUE,       '',         group = LEVELS_GROUP,   inline = 'daily')
-showWeeklyLevelsInput           = input(        false,      'Weekly',   group = LEVELS_GROUP,   inline = 'weekly')
-weeklyLevelsStyleInput          = input.string( SOLID,      '',         group = LEVELS_GROUP,   inline = 'weekly',  options = [SOLID,DASHED,DOTTED])
-weeklyLevelsColorInput          = input(        BLUE,       '',         group = LEVELS_GROUP,   inline = 'weekly')
-showMonthlyLevelsInput          = input(        false,      'Monthly',   group = LEVELS_GROUP,   inline = 'monthly')
-monthlyLevelsStyleInput         = input.string( SOLID,      '',         group = LEVELS_GROUP,   inline = 'monthly', options = [SOLID,DASHED,DOTTED])
-monthlyLevelsColorInput         = input(        BLUE,       '',         group = LEVELS_GROUP,   inline = 'monthly')
+showDailyLevelsInput            = false
+dailyLevelsStyleInput           = SOLID
+dailyLevelsColorInput           = BLUE
+showWeeklyLevelsInput           = show_weekly_levels
+weeklyLevelsStyleInput          = SOLID
+weeklyLevelsColorInput          = BLUE
+showMonthlyLevelsInput          = false
+monthlyLevelsStyleInput         = SOLID
+monthlyLevelsColorInput         = BLUE
 // GLOBAL CALCULATIONS (FOR DASHBOARD & FUSION)
 //---------------------------------------------------------------------------------------------------------------------{
 // Daily Data for Dashboard
@@ -260,8 +294,6 @@ monthlyLevelsColorInput         = input(        BLUE,       '',         group = 
 [d_open, d_high, d_low, d_close] = request.security(syminfo.tickerid, "D", [open[1], high[1], low[1], close[1]], lookahead=barmerge.lookahead_off)
 d_sma20        = request.security(syminfo.tickerid, "D", ta.sma(close, 20)[1], lookahead=barmerge.lookahead_off)
 d_ema13        = request.security(syminfo.tickerid, "D", ta.ema(close, 13)[1], lookahead=barmerge.lookahead_off)
-is_forex       = syminfo.type == "forex"
-is_gold        = str.contains(syminfo.ticker, "XAU") or str.contains(syminfo.ticker, "GOLD")
 
 // ⚡ GOLD OPTIMIZED TREND
 // Gold reverses faster than Forex. We use EMA 8 for Gold to catch trends earlier.
@@ -598,7 +630,7 @@ displayStructure(bool internal = false) =>
     lineStyle       = internal ? line.style_dashed : line.style_solid
     labelSize       = internal ? internalStructureSize : swingStructureSize
     extraCondition  = internal ? internalHigh.currentLevel != swingHigh.currentLevel and bullishBar : true
-    strict_check    = not strict_mode or (bar_index - p_ivot.barIndex >= strict_delay)
+    strict_check    = not mode_strict or (bar_index - p_ivot.barIndex >= strict_delay)
     bullishColor    = styleInput == MONOCHROME ? MONO_BULLISH : internal ? internalBullColorInput : swingBullColorInput
     if ta.crossover(close,p_ivot.currentLevel) and not p_ivot.crossed and extraCondition and strict_check
         string tag = t_rend.bias == BEARISH ? CHOCH : BOS
@@ -617,7 +649,7 @@ displayStructure(bool internal = false) =>
             storeOrdeBlock(p_ivot,internal,BULLISH)
     p_ivot          := internal ? internalLow : swingLow    
     extraCondition  := internal ? internalLow.currentLevel != swingLow.currentLevel and bearishBar : true
-    strict_check    := not strict_mode or (bar_index - p_ivot.barIndex >= strict_delay)
+    strict_check    := not mode_strict or (bar_index - p_ivot.barIndex >= strict_delay)
     bearishColor    = styleInput == MONOCHROME ? MONO_BEARISH : internal ? internalBearColorInput : swingBearColorInput
     if ta.crossunder(close,p_ivot.currentLevel) and not p_ivot.crossed and extraCondition and strict_check
         string tag = t_rend.bias == BULLISH ? CHOCH : BOS
@@ -948,61 +980,53 @@ if show_killzones
 // Détection des jours de news majeures (approximation - calendrier économique)
 isNewsDay() =>
     bool is_news = false
+    h_ny = hour(time, "America/New_York")
+    m_ny = minute(time, "America/New_York")
+    
+    // Facteur Post-News: Si activé, on réduit le blocage APRÈS la news
+    hours_after_val = use_post_news_only ? 0 : 1 
     
     // NFP: Premier vendredi du mois à 08:30 NY
     if use_nfp_filter
         is_first_week = dayofmonth <= 7
         is_friday = dayofweek == dayofweek.friday
-        h_ny = hour(time, "America/New_York")
-        m_ny = minute(time, "America/New_York")
         
-        // Bloquer de 06:30 à 09:30 NY (2h avant, 1h après)
-        is_nfp_time = (h_ny == 6 and m_ny >= 30) or h_ny == 7 or h_ny == 8 or (h_ny == 9 and m_ny <= 30)
+        // Bloquer de 06:30 à 08:30 (avant) et selon hours_after_val après
+        is_nfp_time = (h_ny == 6 and m_ny >= 30) or h_ny == 7 or (h_ny == 8 and m_ny <= 30) or (h_ny >= 8 and h_ny < 8 + hours_after_val)
         
         if is_first_week and is_friday and is_nfp_time
             is_news := true
     
-    // FOMC: 8 fois par an (approximation: 2ème mercredi des mois impairs + quelques pairs)
-    // Simplifié: Bloquer tous les mercredis 12:00-16:00 NY des mois FOMC
+    // FOMC: Bloquer de 12:00 à 14:00 (avant) et selon hours_after_val après
     if use_fomc_filter
         is_fomc_month = month == 1 or month == 3 or month == 5 or month == 6 or month == 7 or month == 9 or month == 11 or month == 12
         is_wednesday = dayofweek == dayofweek.wednesday
         is_second_week = dayofmonth >= 8 and dayofmonth <= 14
-        h_ny_fomc = hour(time, "America/New_York")
         
-        // Bloquer de 12:00 à 16:00 NY
-        is_fomc_time = h_ny_fomc >= 12 and h_ny_fomc <= 16
+        is_fomc_time = (h_ny >= 12 and h_ny < 14) or (h_ny >= 14 and h_ny < 14 + hours_after_val)
         
         if is_fomc_month and is_wednesday and is_second_week and is_fomc_time
             is_news := true
     
-    // CPI: Généralement 2ème ou 3ème mardi du mois à 08:30 NY
+    // CPI: Bloquer de 06:30 à 08:30 (avant) et selon hours_after_val après
     if use_cpi_filter
         is_tuesday = dayofweek == dayofweek.tuesday
         is_cpi_week = dayofmonth >= 8 and dayofmonth <= 21
-        h_ny_cpi = hour(time, "America/New_York")
-        m_ny_cpi = minute(time, "America/New_York")
         
-        // Bloquer de 06:30 à 09:30 NY
-        is_cpi_time = (h_ny_cpi == 6 and m_ny_cpi >= 30) or h_ny_cpi == 7 or h_ny_cpi == 8 or (h_ny_cpi == 9 and m_ny_cpi <= 30)
+        is_cpi_time = (h_ny == 6 and m_ny >= 30) or h_ny == 7 or (h_ny == 8 and m_ny <= 30) or (h_ny >= 8 and h_ny < 8 + hours_after_val)
         
         if is_tuesday and is_cpi_week and is_cpi_time
             is_news := true
-    
+            
     // Session Opens: Bloquer 30min avant/après London (03:00) et NY (09:30) open
     if use_session_start
-        h_ny_session = hour(time, "America/New_York")
-        m_ny_session = minute(time, "America/New_York")
-        
-        // London open: 02:30-03:30 NY
-        is_london_open = (h_ny_session == 2 and m_ny_session >= 30) or (h_ny_session == 3 and m_ny_session <= 30)
-        
-        // NY open: 09:00-10:00 NY
-        is_ny_open = (h_ny_session == 9 and m_ny_session <= 60) or (h_ny_session == 10 and m_ny_session == 0)
+        // Note: use_post_news_only ne s'applique pas aux ouvertures de session pour plus de sécurité
+        is_london_open = (h_ny == 2 and m_ny >= 30) or (h_ny == 3 and m_ny <= 30)
+        is_ny_open = (h_ny == 9 and m_ny <= 60) or (h_ny == 10 and m_ny == 0)
         
         if is_london_open or is_ny_open
             is_news := true
-    
+            
     is_news
 
 // Appel de la fonction
@@ -1096,7 +1120,7 @@ daily_drawdown_pct = not na(start_day_equity) and start_day_equity > 0 ? ((start
 loss_confirm       = daily_losses < max_daily_loss and daily_drawdown_pct < max_drawdown_pct
 
 // 4. INSTITUTIONAL DASHBOARD (TOP-DOWN APPROACH)
-var table dash = table.new(position.top_right, 2, 10, bgcolor=color.new(#131722, 10), border_color=color.new(GRAY, 80))
+var table dash = table.new(position.top_right, 2, 12, bgcolor=color.new(#131722, 10), border_color=color.new(GRAY, 80))
 
 // Calculer BOS Strength à chaque tick pour cohérence
 bos_str = calculateBOSStrength()
@@ -1162,6 +1186,21 @@ if show_dash and barstate.islast
     w_range_txt = str.tostring(w_range_pct, "#.##") + "%"
     table.cell(dash, 0, 9, "Weekly Range", text_color=color.silver, text_halign=text.align_left, text_size=dash_size)
     table.cell(dash, 1, 9, w_range_txt, text_color=color.aqua, text_size=dash_size)
+
+    // 🆕 PRO V3.1: Active Modes Status
+    modes_txt = (mode_sniper ? "🔥🔥 SNIPER" : "BALANCED") + (use_post_news_only ? "|NEWS+" : "")
+    table.cell(dash, 0, 10, "STRATEGY MODE", text_color=color.silver, text_halign=text.align_left, text_size=dash_size)
+    table.cell(dash, 1, 10, modes_txt, text_color=mode_sniper ? color.red : color.orange, text_size=dash_size)
+    
+    trail_stat = use_structural_trail ? "READY" : "OFF"
+    if strategy.position_size != 0
+        risk_runner = math.abs(trade_ent - trade_sl)
+        current_rr_runner = risk_runner > 0 ? (math.abs(close - trade_ent) / risk_runner) : 0
+        if current_rr_runner >= trail_activation_rr
+            trail_stat := "RUNNING 🏃"
+            
+    table.cell(dash, 0, 11, "Trail Status", text_color=color.silver, text_halign=text.align_left, text_size=dash_size)
+    table.cell(dash, 1, 11, trail_stat, text_color=trail_stat == "RUNNING 🏃" ? GREEN : color.silver, text_size=dash_size)
 
 //---------------------------------------------------------------------------------------------------------------------}
 
@@ -1406,25 +1445,44 @@ checkSignals() =>
                     break
 
 
-        // � PRO V2 FILTERS CHECK
+        // 🆕 PRO V2 FILTERS CHECK
         // Combine all new protections: News, Max DD, Correlation, Exposure
         extra_filters = (not use_news_filter or not is_news_time) and dd_confirm and corr_confirm and exposure_confirm
         
-        // �🎯 SIGNAL BUY (ULTRA OPTIMIZED - 8 CORE FILTERS + V2 PRO FILTERS)
+        // 🔥 SNIPER MODE FORCE (V3.1)
+        // If Sniper Mode is ON, we force stricter conditions regardless of individual inputs
+        sniper_mtf_active   = mode_sniper ? true : use_pro_mtf
+        sniper_sweep_active = mode_sniper ? true : use_pro_sweep
+        sniper_smt_active   = mode_sniper ? true : use_pro_smt
+        
+        // For BOS, in Sniper Mode we bump the threshold
+        bos_threshold_final = mode_sniper ? math.max(bos_threshold_adaptive, 0.6) : bos_threshold_adaptive
+        
+        // For Volume, in Sniper Mode we require significant volume
+        high_vol_final      = mode_sniper ? (volume >= avg_vol * 1.5) : high_vol
+        
+        //  PRO V3 SNIPER FILTERS
+        bool sniper_mtf_ok   = not sniper_mtf_active or (is_buy_trend and htf_bias == BULLISH) or (is_sell_trend and htf_bias == BEARISH)
+        bool sniper_sweep_ok = not sniper_sweep_active or has_sweep
+        bool sniper_smt_ok = not sniper_smt_active or smt_confirm
+        
+        bool sniper_confirm = sniper_mtf_ok and sniper_sweep_ok and sniper_smt_ok
+        
+        // 🎯 SIGNAL BUY (ULTRA OPTIMIZED - 8 CORE FILTERS + V3 PRO FILTERS)
         // Mitigation: Accept Swing OB, Internal OB, or FVG (Multi-timeframe confluence)
         buy_conf = touch_bull_ob or touch_bull_iob or touch_bull_fvg
         
-        // ULTRA OPTIMIZATION: Removed has_sweep, adr_confirm, mtf_confirm, smt_confirm (too restrictive)
-        // CORE FILTERS: weekly + daily + pd + bos + vol + killzone + candle + loss_protection = 8 filters
-        // PRO V2: News + DD + Correlation
-        if is_buy_trend and buy_conf and weekly_confirm and d_align and pd_confirm and (bos_str >= bos_threshold_adaptive) and high_vol and kz_confirm and candle_conf and loss_confirm and extra_filters
+        // V3: Inclusion de sniper_confirm
+        if is_buy_trend and buy_conf and weekly_confirm and d_align and pd_confirm and (bos_str >= bos_threshold_final) and high_vol_final and kz_confirm and candle_conf and loss_confirm and extra_filters and sniper_confirm
             if new_dir != 1
                 entry_p = na(sig_ent) ? close : sig_ent
-                // Gold Volatility Protection: Wider SL Padding (1.5 ATR)
-                padding_value = (is_gold ? 1.5 : sl_padding_atr) * atr_val_14
+                // 🆕 AUTO-PADDING V3: 2.0 ATR for Indices/Gold, 1.0 for Forex
+                padding_mult = is_high_vol_asset ? 2.0 : sl_padding_atr
+                padding_value = padding_mult * atr_val_14
+                
                 sl = math.min(ob_sl - padding_value, entry_p - ((is_jpy ? 1.2 : 1.0) * atr_val_14))
                 risk_in_price = math.max(entry_p - sl, syminfo.mintick)
-                tp = entry_p + (risk_in_price * rr_ratio_adaptive) // 🆕 Adaptive RR
+                tp = entry_p + (risk_in_price * rr_ratio_adaptive) // Adaptive RR
                 
                 txt = "BUY"
                 if use_rm_labels
@@ -1440,6 +1498,10 @@ checkSignals() =>
                     label.delete(lb_buy)
                     lb_buy := label.new(bar_index, low, txt, color=GREEN, style=label.style_label_up, textcolor=color.white, size=sig_size)
                     
+                    // SNIPER BADGE
+                    if mode_sniper
+                        label.new(bar_index, low - (2*atr_val_14), "🎯", style=label.style_none, textcolor=color.white, size=size.normal)
+                    
                     // Logic Position Sizing (Universal 1% Risk Formula)
                     risk_usd_per_unit = risk_in_price / (is_jpy ? close : 1.0)
                     pos_size = risk_usd_per_unit > 0 ? (strategy.equity * (risk_per_trade / 100)) / risk_usd_per_unit : 0
@@ -1451,20 +1513,22 @@ checkSignals() =>
                     sig_ent := close
                     new_dir := 1
 
-        // 🎯 SIGNAL SELL (ULTRA OPTIMIZED - 8 CORE FILTERS + V2 PRO FILTERS)
+        // 🎯 SIGNAL SELL (ULTRA OPTIMIZED - 8 CORE FILTERS + V3 PRO FILTERS)
         // Mitigation: Accept Swing OB, Internal OB, or FVG (Multi-timeframe confluence)
         sell_conf = touch_bear_ob or touch_bear_iob or touch_bear_fvg
         
-        // ULTRA OPTIMIZATION: Removed has_sweep, adr_confirm, mtf_confirm, smt_confirm (too restrictive)
-        // CORE FILTERS: weekly + daily + pd + bos + vol + killzone + candle + loss_protection = 8 filters
-        // PRO V2: News + DD + Correlation
-        if is_sell_trend and sell_conf and weekly_confirm and d_align and pd_confirm and (bos_str >= bos_threshold_adaptive) and high_vol and kz_confirm and candle_conf and loss_confirm and extra_filters
+        // V3: Inclusion de sniper_confirm
+        if is_sell_trend and sell_conf and weekly_confirm and d_align and pd_confirm and (bos_str >= bos_threshold_final) and high_vol_final and kz_confirm and candle_conf and loss_confirm and extra_filters and sniper_confirm
             if new_dir != -1
-                // Dynamic ATR Padding (Wider for Gold)
-                padding_value = (is_gold ? 1.5 : sl_padding_atr) * atr_val_14
-                sl = math.max(ob_sl + padding_value, close + (1.2 * atr_val_14))
-                risk_in_price = math.max(sl - close, syminfo.mintick)
-                tp = close - (risk_in_price * rr_ratio_adaptive) // 🆕 Adaptive RR
+                entry_p_sell = close // Fix: Utilisation de close directement pour cohérence V3
+                
+                // 🆕 AUTO-PADDING V3: 2.0 ATR for Indices/Gold, 1.0 for Forex
+                padding_mult = is_high_vol_asset ? 2.0 : sl_padding_atr
+                padding_value = padding_mult * atr_val_14
+                
+                sl = math.max(ob_sl + padding_value, entry_p_sell + (1.2 * atr_val_14))
+                risk_in_price = math.max(sl - entry_p_sell, syminfo.mintick)
+                tp = entry_p_sell - (risk_in_price * rr_ratio_adaptive) // Adaptive RR
                 
                 txt = "SELL"
                 if use_rm_labels
@@ -1479,6 +1543,10 @@ checkSignals() =>
                     var label lb_sell = na
                     label.delete(lb_sell)
                     lb_sell := label.new(bar_index, high, txt, color=RED, style=label.style_label_down, textcolor=color.white, size=sig_size)
+                    
+                    // SNIPER BADGE
+                    if mode_sniper
+                        label.new(bar_index, high + (2*atr_val_14), "🎯", style=label.style_none, textcolor=color.white, size=size.normal)
                     
                     // Logic Position Sizing (Universal 1% Risk Formula)
                     risk_usd_per_unit = risk_in_price / (is_jpy ? close : 1.0)
@@ -1502,6 +1570,10 @@ candleColor = internalTrend.bias == BULLISH ? swingBullishColor : swingBearishCo
 
 // Main Flow
 updateTrailingExtremes()
+// Global Change Tracker (Fixes ta.change warning)
+swing_chg_dn = ta.change(trailing.bottom) != 0
+swing_chg_up = ta.change(trailing.top) != 0
+
 getCurrentStructure(swingsLengthInput,false)
 getCurrentStructure(5,false,true)
 
@@ -1571,22 +1643,56 @@ if strategy.position_size != 0 and not na(trade_sl) and not na(trade_ent)
     risk = math.abs(trade_ent - trade_sl)
     
     // 1. Partial Take Profit (30% pour laisser courir le profit final)
+    // 🎨 PRO DESIGN: Custom Labels instead of Strategy Comments
     if use_partial_tp and not partial_done
-        if strategy.position_size > 0 and high >= trade_ent + (risk * partial_rr)
-            strategy.close("Long", qty_percent=30, comment="Secure 30%")
+        // Note: We use the standard partial_rr here for consistency
+        float partial_price_long = trade_ent + (risk * partial_rr) 
+        float partial_price_short = trade_ent - (risk * partial_rr)
+        
+        if strategy.position_size > 0 and high >= partial_price_long
+            strategy.close("Long", qty_percent=30, comment="TP1") // Minimal comment
             partial_done := true
-        if strategy.position_size < 0 and low <= trade_ent - (risk * partial_rr)
-            strategy.close("Short", qty_percent=30, comment="Secure 30%")
+            // ✨ PRO BADGE DESIGN
+            label.new(bar_index, partial_price_long, "🔒 BANKED\n30%", color=color.new(#9C27B0, 10), textcolor=color.white, style=label.style_label_down, size=size.small, tooltip="Partial Profit Secured")
+            
+        if strategy.position_size < 0 and low <= partial_price_short
+            strategy.close("Short", qty_percent=30, comment="TP1") // Minimal comment
             partial_done := true
+            // ✨ PRO BADGE DESIGN
+            label.new(bar_index, partial_price_short, "🔒 BANKED\n30%", color=color.new(#9C27B0, 10), textcolor=color.white, style=label.style_label_up, size=size.small, tooltip="Partial Profit Secured")
 
     // 2. Break-Even (Smart Cover)
     // Moves SL slightly past entry to cover swap/commissions
     if use_be
-        be_offset = 0.1 * atr_val_14_global 
+        be_offset = (is_jpy ? 0.02 : 0.0001) // Petit offset pour couvrir commissions
         if strategy.position_size > 0 and high >= trade_ent + (risk * be_target)
-            strategy.exit("BE Long", "Long", stop=trade_ent + be_offset, comment="SL Breakeven+")
+            strategy.exit("BE Long", "Long", stop=trade_ent + be_offset, comment="SL BE+")
         if strategy.position_size < 0 and low <= trade_ent - (risk * be_target)
-            strategy.exit("BE Short", "Short", stop=trade_ent - be_offset, comment="SL Breakeven+")
+            strategy.exit("BE Short", "Short", stop=trade_ent - be_offset, comment="SL BE+")
+
+    // 🆕 3. STRUCTURAL TRAILING STOP (PRO V3) - The Runner Logic
+    // Only activates after 1.5 RR (trail_activation_rr)
+    if use_structural_trail and strategy.position_size != 0
+        float current_rr = risk > 0 ? (math.abs(close - trade_ent) / risk) : 0
+        if current_rr >= trail_activation_rr
+            // Trail on last Swing Point (LuxAlgo Structure)
+            float trail_price_final = na
+            float trail_buffer = (is_high_vol_asset ? 1.5 : 0.5) * atr_val_14_global
+            
+            if strategy.position_size > 0
+                trail_price_final := math.max(trailing.bottom - trail_buffer, trade_ent)
+                strategy.exit("Trail Long", "Long", stop=trail_price_final, comment="Trail 🏃")
+                if swing_chg_dn
+                    alert("🟢 TRAIL ACTIVÉ @ " + str.tostring(trail_price_final, "#.#####"), alert.freq_once_per_bar_close)
+            
+            if strategy.position_size < 0
+                trail_price_final := math.min(trailing.top + trail_buffer, trade_ent)
+                strategy.exit("Trail Short", "Short", stop=trail_price_final, comment="Trail 🏃")
+                if swing_chg_up
+                    alert("🔴 TRAIL ACTIVÉ @ " + str.tostring(trail_price_final, "#.#####"), alert.freq_once_per_bar_close)
+
+//---------------------------------------------------------------------------------------------------------------------}
+ 
 
 
 if strategy.position_size == 0
